@@ -12,7 +12,9 @@ import (
 	"github.com/arturoeanton/go-echo-live-view/components"
 	"github.com/arturoeanton/go-echo-live-view/liveview"
 	"github.com/arturoeanton/gocommons/utils"
+	"github.com/cosmos72/gomacro/base/inspect"
 	"github.com/cosmos72/gomacro/fast"
+	"github.com/cosmos72/gomacro/fast/debug"
 	"github.com/gomarkdown/markdown"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
@@ -283,6 +285,8 @@ func main() {
 
 	home.Register(func() *liveview.ComponentDriver {
 		interp := fast.New()
+		interp.SetDebugger(&debug.Debugger{})
+		interp.SetInspector(&inspect.Inspector{})
 		page := components.NewLayout("notebook", `
 		<div class="navbar">
 		{{ mount "link_add_code"}} 
