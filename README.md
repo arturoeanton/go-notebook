@@ -22,6 +22,9 @@ git clone https://github.com/arturoeanton/go-notebook.git
 cd go-notebook
 go run main.go
 ```
+### Go to
+http://localhost:1323/
+
 
 ## DEMO
 
