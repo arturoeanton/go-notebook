@@ -11,13 +11,16 @@ Go-Notebook is inspired by Jupyter Project ([link](https://github.com/jupyter/no
 
 You can add code and text depends your needs. 
 
+## DEMO
+
+![alt text](https://raw.githubusercontent.com/arturoeanton/go-notebook/main/gonote1.gif)
+
+![alt text](https://raw.githubusercontent.com/arturoeanton/go-notebook/main/gonote2.gif)
+
+
 ## To Do
 
 This project is still in progress, we are working in the following features.
- * Add a UI styles. 
- * Add text deletion button. 
- * Add code deletion button. 
- * Add save button.
  * Add examples. 
 
 ## Contributing
