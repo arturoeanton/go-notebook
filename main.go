@@ -12,13 +12,13 @@ import (
 	"github.com/arturoeanton/go-echo-live-view/components"
 	"github.com/arturoeanton/go-echo-live-view/liveview"
 	"github.com/arturoeanton/gocommons/utils"
+	"github.com/cosmos72/gomacro/base"
 	"github.com/cosmos72/gomacro/base/inspect"
 	"github.com/cosmos72/gomacro/fast"
 	"github.com/cosmos72/gomacro/fast/debug"
 	"github.com/gomarkdown/markdown"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
 )
 
 var (
@@ -194,7 +194,7 @@ func (t *Shell) Click(data interface{}) {
 	log.SetOutput(w)
 
 	t.Code = t.Driver.GetValue(t.UUID + "_code")
-	t.Result = ""
+	t.Result = "<b>"
 	defer func() {
 		if r := recover(); r != nil {
 			t.Result += "Recovered in (" + t.Code + ")" + fmt.Sprint(r)
@@ -238,9 +238,7 @@ func main() {
 	notebookFile = *filename
 
 	e := echo.New()
-	e.Use(middleware.Logger())
-	e.Use(middleware.Recover())
-
+	e.Static("/static", "static")
 	home := liveview.PageControl{
 		Title: "Go-Notebook",
 		Lang:  "en",
@@ -283,10 +281,35 @@ func main() {
 		Router: e,
 	}
 
+	interpSetup := fast.New()
+	defaultCode, _ := utils.FileToString("default.gonote")
+	interpSetup.Eval(defaultCode)
+
 	home.Register(func() *liveview.ComponentDriver {
 		interp := fast.New()
 		interp.SetDebugger(&debug.Debugger{})
 		interp.SetInspector(&inspect.Inspector{})
+
+		g := &interp.Comp.Globals
+		g.ParserMode = 0 // defaults
+		g.Options |= base.OptDebugger |
+			base.OptCtrlCEnterDebugger |
+			base.OptKeepUntyped |
+			base.OptTrapPanic |
+			base.OptShowPrompt |
+			base.OptShowEval |
+			base.OptShowEvalType |
+			base.OptModuleImport |
+			base.OptShowCompile |
+			base.OptShowTime
+
+		g.Options &^= base.OptShowPrompt | base.OptShowEval | base.OptShowEvalType // cleared by default, overridden by -s, -v and -vv
+
+		g.Imports, g.Declarations, g.Statements = nil, nil, nil
+
+		defaultCode, _ := utils.FileToString("default.gonote")
+		interp.Eval(defaultCode)
+
 		page := components.NewLayout("notebook", `
 		<div class="navbar">
 		{{ mount "link_add_code"}} 
