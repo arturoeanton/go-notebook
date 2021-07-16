@@ -13,6 +13,16 @@ Go-Notebook is inspired by Jupyter Project ([link](https://github.com/jupyter/no
 
 You can add code and text depends your needs. 
 
+## Run
+
+We will make docker in the future :P
+
+```
+git clone https://github.com/arturoeanton/go-notebook.git
+cd go-notebook
+go run main.go
+```
+
 ## DEMO
 
 ![alt text](https://raw.githubusercontent.com/arturoeanton/go-notebook/main/gonote1.gif)
@@ -24,6 +34,7 @@ You can add code and text depends your needs.
 
 This project is still in progress, we are working in the following features.
  * Add examples. 
+ * Make docker
 
 ## Contributing
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
