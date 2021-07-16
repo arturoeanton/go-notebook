@@ -1,3 +1,4 @@
+
 import "gonum.org/v1/plot"
 import "gonum.org/v1/plot/vg"
 import "gonum.org/v1/plot/plotter"
@@ -10,3 +11,4 @@ func ShowPlot(p *plot.Plot) string {
 	}
 	return "<img src='static/tmp_" + id + ".png' />"
 }
+//*/

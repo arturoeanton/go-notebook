@@ -1,0 +1,17 @@
+<div id="{{.UUID}}_div_md" style="background: white;">
+    <br>
+    <fieldset style="border-radius: 5px">
+        {{if eq .Result "" }}
+        <textarea oninput="autosize(this)" onfocus="autosize(this)" id="{{.UUID}}_text_md"
+            style="width: 100%; height: 50px; padding: 5px; background: cornsilk;">{{.CodeMD}}</textarea>
+        {{end }}
+        {{if ne .Result "" }}
+        <fieldset style="border-width: 0px;">
+            {{.Result}}
+        </fieldset>
+        {{end}}
+        <hr />
+        <button id="{{.UUID}}_play" onclick="send_event('{{.Id}}', 'Click')">{{.CaptionPlay}}</button>
+        <button id="{{.UUID}}_remove" onclick="send_event('{{.Id}}', 'Remove', '{{.UUID}}')">Remove</button>
+    </fieldset>
+</div>

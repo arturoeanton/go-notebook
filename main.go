@@ -8,6 +8,8 @@ import (
 	"io"
 	"log"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/arturoeanton/go-echo-live-view/components"
 	"github.com/arturoeanton/go-echo-live-view/liveview"
@@ -69,24 +71,8 @@ type TextMD struct {
 }
 
 func (t *TextMD) GetTemplate() string {
-	return `
-	<br>
-	<div id="{{.UUID}}_div_md" style="background: white;">
-		<fieldset style="border-radius: 5px">
-			{{if eq .Result "" }} 
-			<textarea  oninput="autosize(this)" onfocus="autosize(this)" id="{{.UUID}}_text_md" style="width: 100%; height: 50px; padding: 5px; background: cornsilk;" >{{.CodeMD}}</textarea>
-			{{end }} 
-			{{if ne .Result "" }} 
-			<fieldset style="border-width: 0px;">
-			{{.Result}}
-			</fieldset>
-			{{end}}
-			<hr/>
-			<button id="{{.UUID}}_play" onclick="send_event('{{.Id}}', 'Click')" >{{.CaptionPlay}}</button>
-			<button id="{{.UUID}}_remove" onclick="send_event('{{.Id}}', 'Remove', '{{.UUID}}')" >Remove</button>
-		</fieldset>
-	</div>
-	`
+	te, _ := utils.FileToString(`lives/text_md.html`)
+	return te
 }
 
 func (t *TextMD) Start() {
@@ -149,34 +135,8 @@ func (t *Shell) Start() {
 }
 
 func (t *Shell) GetTemplate() string {
-	return `
-	<br>
-	<div id="{{.UUID}}_div_code" style="background: white;">
-		<fieldset style="border-radius: 5px">
-			<textarea  oninput="autosize(this)" onfocus="autosize(this)" id="{{.UUID}}_code" style="width: 100%; height: 50px; padding: 5px; background: darkseagreen;" >{{.Code}}</textarea>
-			{{if ne .Result "" }} 
-			<fieldset style="background: aliceblue;">
-				<legend>Result</legend>
-				{{.Result}}
-			</fieldset>
-			{{end}}
-			{{if ne .Out "" }} 
-			<fieldset style="background: aliceblue;">
-				<legend>Output</legend>
-				{{.Out}} 
-			</fieldset>
-			{{end}}
-			{{if ne .Err "" }} 
-			<fieldset>
-				<legend>Stderr</legend>
-				{{.Err}} 
-			</fieldset>
-			{{end}}
-			<hr/>
-			<button id="{{.UUID}}_play" onclick="send_event('{{.Id}}', 'Click')" >{{.CaptionPlay}}</button>
-			<button id="{{.UUID}}_remove" onclick="send_event('{{.Id}}', 'Remove', '{{.UUID}}')" >Remove</button>
-		</fieldset>
-	</div>`
+	te, _ := utils.FileToString("lives/shell.html")
+	return te
 }
 
 func (t *Shell) Remove(data interface{}) {
@@ -194,7 +154,7 @@ func (t *Shell) Click(data interface{}) {
 	log.SetOutput(w)
 
 	t.Code = t.Driver.GetValue(t.UUID + "_code")
-	t.Result = "<b>"
+	t.Result = ""
 	defer func() {
 		if r := recover(); r != nil {
 			t.Result += "Recovered in (" + t.Code + ")" + fmt.Sprint(r)
@@ -239,46 +199,15 @@ func main() {
 
 	e := echo.New()
 	e.Static("/static", "static")
+	css, _ := utils.FileToString("lives/style.css")
 	home := liveview.PageControl{
-		Title: "Go-Notebook",
-		Lang:  "en",
-		HeadCode: `
-		<script src="https://rawgit.com/jackmoore/autosize/master/dist/autosize.min.js"></script>
-		`,
-		Css: `
-		body {margin:0;}
-
-.navbar {
-  overflow: hidden;
-  background-color: #333;
-  position: fixed;
-  top: 0;
-  width: 100%;
-
-}
-
-.navbar a {
-  float: left;
-  display: block;
-  color: #f2f2f2;
-  text-align: center;
-  padding: 14px 16px;
-  text-decoration: none;
-  font-size: 17px;
-}
-
-.navbar a:hover {
-  background: #ddd;
-  color: black;
-}
-
-#main_div {
-	padding: 16px;
-	margin-top: 30px;
-  }
-		`,
-		Path:   "/",
-		Router: e,
+		Title:     "Go-Notebook",
+		Lang:      "en",
+		HeadCode:  "lives/head.html",
+		AfterCode: "lives/after.html",
+		Css:       css,
+		Path:      "/",
+		Router:    e,
 	}
 
 	interpSetup := fast.New()
@@ -310,20 +239,20 @@ func main() {
 		defaultCode, _ := utils.FileToString("default.gonote")
 		interp.Eval(defaultCode)
 
-		page := components.NewLayout("notebook", `
-		<div class="navbar">
-		{{ mount "link_add_code"}} 
-		{{mount "link_add_md"}}
-		{{mount "link_reload"}}
-		</div>  
-		<div id="main_div">
-		</div>
-		`)
+		page := components.NewLayout("notebook", "lives/layout.html")
 
 		link_add_code := liveview.NewDriver("link_add_code", &LinkMenu{Caption: "+ Code"})
 		link_add_code.Events["Click"] = func(data interface{}) {
 			idShell := "shell_" + uuid.NewString()
-			newShell := &Shell{Debug: true, Interpreter: interp, CaptionPlay: "Play"}
+			code := ""
+
+			if snippetName, ok := data.(string); ok {
+				if utils.Exists("snippet/" + snippetName + ".gonote") {
+					code, _ = utils.FileToString("snippet/" + snippetName + ".gonote")
+				}
+			}
+
+			newShell := &Shell{Debug: true, Interpreter: interp, CaptionPlay: "Play", Code: code}
 			addShell(idShell, page, link_add_code, newShell)
 		}
 		link_add_md := liveview.NewDriver("link_add_md", &LinkMenu{Caption: "+ Text"})
@@ -347,6 +276,18 @@ func main() {
 					addShell(key, page, link_reload, item.Shell)
 				}
 			}
+
+			options := "<option></option>"
+
+			root := "snippet/"
+			filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+				if strings.HasSuffix(info.Name(), ".gonote") {
+					options += "<option>" + strings.Split(info.Name(), ".")[0] + "</option>"
+				}
+				link_reload.SetHTML("snippet", options)
+				return nil
+			})
+
 		}
 
 		return page.Mount(link_add_code).Mount(link_add_md).Mount(link_reload)
