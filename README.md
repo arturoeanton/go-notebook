@@ -3,6 +3,8 @@
 
 Go-Notebook is an app that was developed using go-echo-live-view framework, developed also by us. 
 
+For this project we using https://github.com/cosmos72/gomacro too
+
 GitHub repository is [here](https://github.com/arturoeanton/go-echo-live-view).
 
 ## About
