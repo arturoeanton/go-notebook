@@ -1,7 +1,7 @@
 
 # Go-Notebook
 
-Go-Notebook is an app that was developed using go-echo-live-view framework, developed also by me. 
+Go-Notebook is an app that was developed using go-echo-live-view framework, developed also by us. 
 
 GitHub repository is [here](https://github.com/arturoeanton/go-echo-live-view).
 
