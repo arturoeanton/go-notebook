@@ -51,3 +51,5 @@ if err := p.Save(4*vg.Inch, 4*vg.Inch, "functions.png"); err != nil {
 	panic(err)
 }
 p.Y.Max = 100
+
+ShowPlot(p)
