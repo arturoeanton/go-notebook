@@ -46,10 +46,4 @@ p.X.Max = 10
 p.Y.Min = 0
 p.Y.Max = 100
 
-// Save the plot to a PNG file.
-if err := p.Save(4*vg.Inch, 4*vg.Inch, "functions.png"); err != nil {
-	panic(err)
-}
-p.Y.Max = 100
-
 ShowPlot(p)

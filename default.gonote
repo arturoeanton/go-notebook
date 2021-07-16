@@ -4,8 +4,9 @@ import "gonum.org/v1/plot/plotter"
 import "github.com/google/uuid"
 
 func ShowPlot(p *plot.Plot) string {
-	if err := p.Save(4*vg.Inch, 4*vg.Inch, "static/tmp.png"); err != nil {
+	id := uuid.New().String()
+	if err := p.Save(4*vg.Inch, 4*vg.Inch, "static/tmp_"+id+".png"); err != nil {
 		panic(err)
 	}
-	return "<img src='static/tmp.png' />"
+	return "<img src='static/tmp_" + id + ".png' />"
 }
