@@ -1,37 +1,54 @@
-body {margin:0;}
+body {
+    margin: 0;
+}
 
 .navbar {
-  overflow: hidden;
-  background-color: #333;
-  position: fixed;
-  top: 0;
-  width: 100%;
+    overflow: hidden;
+    background-color: #333;
+    position: fixed;
+    top: 0;
+    width: 100%;
 
 }
 
 .navbar a {
-  float: left;
-  display: block;
-  color: #f2f2f2;
-  text-align: center;
-  padding: 14px 16px;
-  text-decoration: none;
-  font-size: 17px;
+    float: left;
+    display: block;
+    color: #f2f2f2;
+    text-align: center;
+    padding: 14px 16px;
+    text-decoration: none;
+    font-size: 17px;
 }
 
 .navbar a:hover {
-  background: #ddd;
-  color: black;
+    background: #ddd;
+    color: black;
 }
 
 #main_div {
-	padding: 16px;
-	margin-top: 30px;
-  }
+    padding: 16px;
+    margin-top: 30px;
+}
 
-  /* Display some links to the right */
+/* Display some links to the right */
 #navbar-right {
     float: right;
     padding-right: 5px;
     color: #f2f2f2;
-  }
+}
+
+p.snippet {
+    display: inline-table;
+}
+
+textarea.result {
+    width: 100%;
+    padding: 5px;
+    background:#404040;
+    color: whitesmoke;
+    overflow: hidden;
+    overflow-wrap: break-word;
+    resize: horizontal;
+    height: 42px;
+}

@@ -3,14 +3,20 @@
     {{mount "link_add_md"}}
     {{mount "link_reload"}}
 
-    <div id="navbar-right" >
-        <p class="snippet">Snippet: 
-        <select id="snippet" onchange="send_event('link_add_code','Click', this.value)">
-            <option></option>
-            <option>example</option>
-        </select></p>    
+    <div id="navbar-right">
+        <p class="snippet">Snippet:
+            <select id="snippet" onchange="send_event('link_add_code','Click', this.value)">
+                <option></option>
+            </select>
+        </p>
+
+        <p class="snippet">Notebook:
+            <input list="notebooks" id="notebook" onchange="send_event('link_reload','Click',this.value)">
+            </input>
+            <datalist id="notebooks">
+            </datalist>
+        </p>
     </div>
 </div>
 <div id="main_div">
 </div>
-

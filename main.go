@@ -25,7 +25,7 @@ import (
 
 var (
 	note         Note = Note{Order: make([]string, 0), Items: make(map[string]Item)}
-	notebookFile      = "data.gonote.json"
+	notebookFile      = "notebooks/default.gonote.json"
 )
 
 func MapToJSONFile(file string, data interface{}) {
@@ -180,10 +180,14 @@ func (t *Shell) Click(data interface{}) {
 
 	values, types := t.Interpreter.Eval(t.Code)
 	for i, value := range values {
-		t.Result += fmt.Sprint(value.ReflectValue())
-		if t.Debug {
-			t.Result += "|" + fmt.Sprint(types[i])
+		value := fmt.Sprint(value.ReflectValue())
+
+		if !strings.HasPrefix(value, "<div>") {
+			value += "|" + fmt.Sprint(types[i])
+			value = "<textarea onfocus='autosize(this)'' class='result'  readonly='true'>" + value + "</textarea>"
 		}
+		t.Result += value
+
 		t.Result += "\n"
 	}
 	t.CaptionPlay = "Replay"
@@ -192,7 +196,7 @@ func (t *Shell) Click(data interface{}) {
 
 func main() {
 
-	filename := flag.String("f", "default.gonote.json", "GoNotebookFile")
+	filename := flag.String("f", "notebooks/default.gonote.json", "GoNotebookFile")
 	port := flag.String("p", ":1323", "port")
 	flag.Parse()
 	notebookFile = *filename
@@ -263,6 +267,16 @@ func main() {
 
 		link_reload := liveview.NewDriver("link_reload", &LinkMenu{Caption: "Reload"})
 		link_reload.Events["Click"] = func(data interface{}) {
+			note = Note{Order: make([]string, 0), Items: make(map[string]Item)}
+			link_reload.SetHTML("main_div", "")
+			defaultCode, _ := utils.FileToString("default.gonote")
+			interp.Eval(defaultCode)
+			if _, ok := data.(string); ok {
+				notebookFile = "notebooks/" + fmt.Sprint(data) + ".gonote.json"
+			}
+			if !utils.Exists(notebookFile) {
+				utils.StringToFile(notebookFile, `{"order":[], "Items":{}}`)
+			}
 			jsonString, _ := utils.FileToString(notebookFile)
 			json.Unmarshal([]byte(jsonString), &note)
 			for _, key := range note.Order {
@@ -287,6 +301,18 @@ func main() {
 				link_reload.SetHTML("snippet", options)
 				return nil
 			})
+
+			optionsNotebook := "<option></option>"
+
+			filepath.Walk("notebooks/", func(path string, info os.FileInfo, err error) error {
+				if strings.HasSuffix(info.Name(), ".gonote.json") {
+					optionsNotebook += "<option>" + strings.Split(info.Name(), ".")[0] + "</option>"
+				}
+				link_reload.SetHTML("notebooks", optionsNotebook)
+				return nil
+			})
+
+			link_reload.SetValue("notebook", strings.Split(strings.Split(notebookFile, ".")[0], "/")[1])
 
 		}
 
