@@ -45,10 +45,44 @@ p.snippet {
 textarea.result {
     width: 100%;
     padding: 5px;
-    background:#404040;
+    background: #404040;
     color: whitesmoke;
     overflow: hidden;
     overflow-wrap: break-word;
     resize: horizontal;
     height: 42px;
+}
+
+
+.spinner-overlay {
+    z-index: 999;
+    position:absolute;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    width: 100vw;
+    pointer-events: none;
+    background:rgba(0, 0, 0, 0.2);
+    display: none;
+}
+
+
+.spinner {
+    border: 4px solid rgba(0, 0, 0, 0.6);
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border-left-color: transparent;
+    animation: spin 1s linear infinite;
+    margin: 250px auto
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
 }

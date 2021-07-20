@@ -38,6 +38,7 @@ http://localhost:1323/
 This project is still in progress, we are working in the following features.
  * Add examples. 
  * Make docker
+ * Save snippet
 
 ## Contributing
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.

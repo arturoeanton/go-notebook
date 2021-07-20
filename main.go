@@ -145,6 +145,9 @@ func (t *Shell) Remove(data interface{}) {
 	MapToJSONFile(notebookFile, note)
 }
 func (t *Shell) Click(data interface{}) {
+	t.Driver.SetStyle("spinner-overlay", "display: block")
+	t.Driver.SetStyle("content", "pointer-events:none")
+
 	old := os.Stdout // keep backup of the real stdout
 	oldErr := os.Stderr
 	r, w, _ := os.Pipe()
@@ -155,6 +158,10 @@ func (t *Shell) Click(data interface{}) {
 
 	t.Code = t.Driver.GetValue(t.UUID + "_code")
 	t.Result = ""
+	defer func() {
+		t.Driver.SetStyle("content", "pointer-events:auto")
+		t.Driver.SetStyle("spinner-overlay", "display: none")
+	}()
 	defer func() {
 		if r := recover(); r != nil {
 			t.Result += "Recovered in (" + t.Code + ")" + fmt.Sprint(r)
@@ -323,17 +330,17 @@ func main() {
 }
 
 func addShell(idShell string, page, driver *liveview.ComponentDriver, newShell *Shell) {
-	main_div := driver.GetHTML("main_div")
-	main_div += `<div id="` + idShell + `"><div>`
-	driver.SetHTML("main_div", main_div)
+
+	driver.AddNode("main_div", `<div id="`+idShell+`"><div>`)
+
 	shell := liveview.NewDriver(idShell, newShell)
 	page.MountWithStart(idShell, shell)
+	driver.EvalScript("window.scrollBy(0, document.body.offsetHeight);")
 }
 
 func addMD(idText string, page, driver *liveview.ComponentDriver, newTextMD *TextMD) {
-	main_div := driver.GetHTML("main_div")
-	main_div += `<div id="` + idText + `"><div>`
-	driver.SetHTML("main_div", main_div)
+	driver.AddNode("main_div", `<div id="`+idText+`"><div>`)
 	textMD := liveview.NewDriver(idText, newTextMD)
 	page.MountWithStart(idText, textMD)
+	driver.EvalScript("window.scrollBy(0, document.body.offsetHeight);")
 }

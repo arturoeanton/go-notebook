@@ -3,7 +3,7 @@ module github.com/arturoeanton/go-notebook
 go 1.13
 
 require (
-	github.com/arturoeanton/go-echo-live-view v0.0.0-20210716154008-04afddacb712
+	github.com/arturoeanton/go-echo-live-view v0.0.0-20210720201919-f5171b817bf6
 	github.com/arturoeanton/gocommons v0.0.0-20210613045617-59f224587f91
 	github.com/cosmos72/gomacro v0.0.0-20210624153544-b4935e406a41
 	github.com/gomarkdown/markdown v0.0.0-20210514010506-3b9f47219fe7
