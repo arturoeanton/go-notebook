@@ -12,5 +12,5 @@ func ShowPlot(p *plot.Plot) string {
 	return "<div><img src='static/tmp.png?_=" + id + "' /></div>"
 }
 
-//*/
+//v1*/
 
