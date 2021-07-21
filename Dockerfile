@@ -13,3 +13,8 @@ RUN go get -u github.com/google/uuid
 
 
 CMD ["/app/go-notebook"]
+
+## podman login docker.io
+## podman build  -t arturoeanton/go-notebook  .
+## podman push arturoeanton/go-notebook
+## podman run --rm -p 1323:1323 go-notebook
