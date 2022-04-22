@@ -1,7 +1,7 @@
+/*
 import "gonum.org/v1/plot"
 import "gonum.org/v1/plot/vg"
 import "gonum.org/v1/plot/plotter"
-import "gonum.org/v1/plot/plotutil"
 import "github.com/google/uuid"
 
 func ShowPlot(p *plot.Plot) string {
