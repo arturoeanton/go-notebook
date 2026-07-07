@@ -35,6 +35,7 @@ type Session struct {
 	mu           sync.Mutex
 	note         Note
 	name         string // notebook name, without directory or extension
+	dir          string // workspace directory holding the notebooks
 	interp       *fast.Interp
 	timer        *time.Timer
 	page         *liveview.ComponentDriver[*liveview.Layout]
@@ -43,7 +44,30 @@ type Session struct {
 }
 
 func newSession(name string, interp *fast.Interp) *Session {
-	return &Session{name: name, interp: interp, note: emptyNote()}
+	return &Session{name: name, dir: "notebooks", interp: interp, note: emptyNote()}
+}
+
+// path resolves a notebook name inside this session's workspace.
+func (s *Session) path(name string) string {
+	return filepath.Join(s.dir, name+".gonote.json")
+}
+
+// ensureWorkspace returns the notebooks directory for a user, creating and
+// seeding it with the default notebook on first use. Open mode ("" user)
+// keeps the shared notebooks/ directory.
+func ensureWorkspace(user string) string {
+	if user == "" {
+		return "notebooks"
+	}
+	dir := filepath.Join("workspaces", user)
+	os.MkdirAll(dir, 0755)
+	seed := filepath.Join(dir, "default.gonote.json")
+	if !liveview.Exists(seed) {
+		if data, err := os.ReadFile(filepath.Join("notebooks", "default.gonote.json")); err == nil {
+			os.WriteFile(seed, data, 0644)
+		}
+	}
+	return dir
 }
 
 var notebookNameRe = regexp.MustCompile(`[^a-zA-Z0-9._ -]+`)
@@ -61,8 +85,8 @@ func notebookPath(name string) string {
 	return filepath.Join("notebooks", name+".gonote.json")
 }
 
-func listNotebooks() []string {
-	entries, _ := os.ReadDir("notebooks")
+func listNotebooks(dir string) []string {
+	entries, _ := os.ReadDir(dir)
 	out := make([]string, 0, len(entries))
 	for _, e := range entries {
 		n := e.Name()
@@ -83,7 +107,7 @@ func (s *Session) load(name string) {
 	defer s.mu.Unlock()
 	s.name = name
 	s.note = emptyNote()
-	p := notebookPath(name)
+	p := s.path(name)
 	if !liveview.Exists(p) {
 		liveview.StringToFile(p, `{"order":[], "Items":{}}`)
 	}
@@ -163,5 +187,5 @@ func (s *Session) Flush() {
 		log.Println("saving notebook:", err)
 		return
 	}
-	liveview.StringToFile(notebookPath(s.name), string(b))
+	liveview.StringToFile(s.path(s.name), string(b))
 }

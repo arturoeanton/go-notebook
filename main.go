@@ -69,38 +69,44 @@ func newInterpreter() *fast.Interp {
 }
 
 func main() {
-	if len(os.Args) > 1 && os.Args[1] == "run" {
-		os.Exit(runHeadless(os.Args[2:]))
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "run":
+			os.Exit(runHeadless(os.Args[2:]))
+		case "user":
+			os.Exit(runUserCmd(os.Args[2:]))
+		}
 	}
 
 	filename := flag.String("f", "default", "default notebook name")
-	port := flag.String("p", ":1323", "port")
+	port := flag.String("p", "localhost:1323", "listen address (use 0.0.0.0:1323 to expose)")
 	flag.Parse()
 	defaultNotebook := sanitizeNotebookName(*filename)
 	if defaultNotebook == "" {
 		defaultNotebook = "default"
 	}
 
+	store := loadAuthStore()
+
 	e := echo.New()
 	e.HideBanner = true
-	e.Static("/static", "static")
-	e.GET("/export/:name", exportHandler)
-	css, _ := liveview.FileToString("lives/style.css")
-	home := liveview.PageControl{
-		Title:    "Go Notebook",
-		Lang:     "en",
-		HeadCode: "lives/head.html",
-		Css:      css,
-		Path:     "/",
-		Router:   e,
+	e.Use(authMiddleware(store))
+	if store != nil {
+		registerAuthRoutes(e, store)
+		e.Logger.Info("authentication enabled")
 	}
+	e.Static("/static", "static")
+	e.GET("/export/:name", func(c echo.Context) error {
+		return exportHandler(c, store)
+	})
 
 	// Warm up the interpreter machinery once at startup.
 	newInterpreter()
 
-	home.Register(func() liveview.LiveDriver {
+	registerLivePage(e, "/", store, func(user string) liveview.LiveDriver {
 		interp := newInterpreter()
 		session := newSession(defaultNotebook, interp)
+		session.dir = ensureWorkspace(user)
 		declareHostFuncs(interp, session)
 		session.varsBaseline = baselineBinds(interp)
 
@@ -142,7 +148,7 @@ func main() {
 		refreshSidebar := func() {
 			current := session.notebookName()
 			var sb strings.Builder
-			for _, n := range listNotebooks() {
+			for _, n := range listNotebooks(session.dir) {
 				active := ""
 				if n == current {
 					active = " nb-active"
@@ -193,6 +199,10 @@ func main() {
 			linkReload.FillValueById("snippet", options)
 
 			linkReload.FillValueById("notebook_name", name)
+			if user != "" {
+				linkReload.FillValueById("user_box",
+					`<span class="user-name">`+user+`</span><a class="user-logout" href="/logout" title="Sign out">⎋</a>`)
+			}
 			refreshSidebar()
 			session.refreshVars()
 			// name is sanitized: safe to embed
@@ -219,7 +229,7 @@ func main() {
 			if name == "" {
 				return
 			}
-			os.Remove(notebookPath(name))
+			os.Remove(session.path(name))
 			if name == session.notebookName() {
 				openNotebook(defaultNotebook)
 				return
@@ -231,15 +241,15 @@ func main() {
 			if name == "" {
 				return
 			}
-			src, err := os.ReadFile(notebookPath(name))
+			src, err := os.ReadFile(session.path(name))
 			if err != nil {
 				return
 			}
 			copyName := name + "-copy"
-			for i := 2; liveview.Exists(notebookPath(copyName)); i++ {
+			for i := 2; liveview.Exists(session.path(copyName)); i++ {
 				copyName = name + "-copy" + strconv.Itoa(i)
 			}
-			liveview.StringToFile(notebookPath(copyName), string(src))
+			liveview.StringToFile(session.path(copyName), string(src))
 			refreshSidebar()
 		}
 		linkReload.Events["Rename"] = func(c *LinkMenu, data interface{}) {
@@ -255,10 +265,10 @@ func main() {
 			if oldName == "" || newName == "" || oldName == newName {
 				return
 			}
-			if liveview.Exists(notebookPath(newName)) {
+			if liveview.Exists(session.path(newName)) {
 				return
 			}
-			if err := os.Rename(notebookPath(oldName), notebookPath(newName)); err != nil {
+			if err := os.Rename(session.path(oldName), session.path(newName)); err != nil {
 				return
 			}
 			if oldName == session.notebookName() {

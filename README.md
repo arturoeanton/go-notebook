@@ -34,6 +34,36 @@ You can add code and text depends your needs.
 * Other third-party packages can still be imported at runtime through gomacro module imports (requires the Go toolchain and network).
 * The default notebook demos the bundled libraries and runs instantly. The `gonum` notebook (pick it from the toolbar) demos gonum/plot: its first run downloads and compiles the package on the fly, which can take a minute or two.
 
+## Multi-user mode
+
+Authentication is off by default (open mode, for local use). Enable it by
+creating users:
+
+```
+go run . user add ana            # prompts for a password
+go run . user list
+go run . user del ana
+```
+
+With at least one user in `users.json`, the server requires signing in and
+gives **each user their own workspace** (`workspaces/<user>/`), seeded with
+the default notebook on first login. Passwords are stored as bcrypt hashes
+and sessions use HMAC-signed cookies. `users.json` and `workspaces/` are
+gitignored.
+
+## Security
+
+Notebook cells run **arbitrary Go code with the server's privileges** — that
+is the point of the tool, and also the reason to be careful:
+
+* The server listens on `localhost:1323` by default. To expose it use
+  `-p 0.0.0.0:1323`, enable authentication, and put it behind TLS.
+* Authentication controls *who gets in*, not *what code can do*: any signed-in
+  user can read files, open network connections and consume resources on the
+  host. Only give accounts to people you would give shell access to.
+* For anything beyond a trusted team, run one instance per trust boundary in
+  the provided Docker container (it drops to a non-root user).
+
 ## Requirements
 
 Go 1.25.5 or newer.

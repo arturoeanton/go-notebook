@@ -2,10 +2,16 @@ package main
 
 import (
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/labstack/echo/v4"
+	"golang.org/x/crypto/bcrypt"
 
 	pd "github.com/arturoeanton/go-pandas"
 	"github.com/arturoeanton/go-pandas/dataframe"
@@ -246,6 +252,87 @@ func TestRunHeadless(t *testing.T) {
 	}
 	if !strings.Contains(s, "Reporte") || !strings.Contains(s, "4") {
 		t.Fatal("report should contain rendered markdown and the cell result")
+	}
+}
+
+func TestAuthTokens(t *testing.T) {
+	store := &AuthStore{Secret: "s3cr3t", Users: map[string]string{}}
+	tok := store.makeToken("ana", time.Now().Add(time.Hour))
+	user, ok := store.verifyToken(tok)
+	if !ok || user != "ana" {
+		t.Fatalf("expected valid token for ana, got %q %v", user, ok)
+	}
+	if _, ok := store.verifyToken(tok + "x"); ok {
+		t.Fatal("tampered token must be rejected")
+	}
+	expired := store.makeToken("ana", time.Now().Add(-time.Minute))
+	if _, ok := store.verifyToken(expired); ok {
+		t.Fatal("expired token must be rejected")
+	}
+	other := &AuthStore{Secret: "otro"}
+	if _, ok := other.verifyToken(tok); ok {
+		t.Fatal("token signed with another secret must be rejected")
+	}
+}
+
+func TestAuthPasswords(t *testing.T) {
+	hash, err := bcrypt.GenerateFromPassword([]byte("hunter22"), bcrypt.MinCost)
+	if err != nil {
+		t.Fatal(err)
+	}
+	store := &AuthStore{Secret: "s", Users: map[string]string{"ana": string(hash)}}
+	if !store.check("ana", "hunter22") {
+		t.Fatal("valid password rejected")
+	}
+	if store.check("ana", "wrong") || store.check("nadie", "hunter22") {
+		t.Fatal("invalid credentials accepted")
+	}
+}
+
+func TestAuthMiddleware(t *testing.T) {
+	store := &AuthStore{Secret: "s3cr3t", Users: map[string]string{}}
+	e := echo.New()
+	e.Use(authMiddleware(store))
+	e.GET("/", func(c echo.Context) error {
+		return c.String(http.StatusOK, "user="+toString(c.Get("user")))
+	})
+	e.GET("/login", func(c echo.Context) error { return c.String(http.StatusOK, "login") })
+
+	// unauthenticated GET / redirects to /login
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+	if rec.Code != http.StatusFound || rec.Header().Get("Location") != "/login" {
+		t.Fatalf("expected redirect to /login, got %d %s", rec.Code, rec.Header().Get("Location"))
+	}
+
+	// authenticated request passes and carries the user
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.AddCookie(&http.Cookie{Name: authCookie, Value: store.makeToken("ana", time.Now().Add(time.Hour))})
+	rec = httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK || rec.Body.String() != "user=ana" {
+		t.Fatalf("expected user=ana, got %d %q", rec.Code, rec.Body.String())
+	}
+}
+
+func TestEnsureWorkspace(t *testing.T) {
+	oldWD, _ := os.Getwd()
+	// run inside a temp copy so workspaces/ does not pollute the repo
+	tmp := t.TempDir()
+	os.MkdirAll(filepath.Join(tmp, "notebooks"), 0755)
+	os.WriteFile(filepath.Join(tmp, "notebooks", "default.gonote.json"), []byte(`{"order":[],"Items":{}}`), 0644)
+	os.Chdir(tmp)
+	defer os.Chdir(oldWD)
+
+	if dir := ensureWorkspace(""); dir != "notebooks" {
+		t.Fatalf("open mode should use notebooks/, got %s", dir)
+	}
+	dir := ensureWorkspace("ana")
+	if dir != filepath.Join("workspaces", "ana") {
+		t.Fatalf("unexpected workspace dir: %s", dir)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "default.gonote.json")); err != nil {
+		t.Fatal("workspace should be seeded with the default notebook")
 	}
 }
 

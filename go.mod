@@ -10,15 +10,16 @@ require (
 	github.com/cosmos72/gomacro v0.0.0-20251011163654-53dd3d49f67b
 	github.com/gomarkdown/markdown v0.0.0-20260614204949-e08cff860f76
 	github.com/google/uuid v1.6.0
+	github.com/gorilla/websocket v1.5.0
 	github.com/labstack/echo/v4 v4.13.4
 	github.com/lib/pq v1.12.3
+	golang.org/x/crypto v0.38.0
 	modernc.org/sqlite v1.53.0
 )
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
-	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/labstack/gommon v0.5.0 // indirect
 	github.com/mattn/go-colorable v0.1.15 // indirect
 	github.com/mattn/go-isatty v0.0.22 // indirect
@@ -31,7 +32,6 @@ require (
 	github.com/stretchr/testify v1.11.1 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
-	golang.org/x/crypto v0.38.0 // indirect
 	golang.org/x/mod v0.36.0 // indirect
 	golang.org/x/net v0.40.0 // indirect
 	golang.org/x/sync v0.21.0 // indirect

@@ -5,6 +5,7 @@ import (
 	"html"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/arturoeanton/go-echo-live-view/liveview"
@@ -13,12 +14,14 @@ import (
 
 // exportHandler renders a saved notebook as a standalone, shareable HTML page:
 // markdown cells, code and persisted outputs, with the notebook styles inlined.
-func exportHandler(c echo.Context) error {
+func exportHandler(c echo.Context, store *AuthStore) error {
 	name := sanitizeNotebookName(c.Param("name"))
 	if name == "" {
 		return c.String(http.StatusBadRequest, "invalid notebook name")
 	}
-	data, err := os.ReadFile(notebookPath(name))
+	user, _ := userFromRequest(c, store)
+	dir := ensureWorkspace(user)
+	data, err := os.ReadFile(filepath.Join(dir, name+".gonote.json"))
 	if err != nil {
 		return c.String(http.StatusNotFound, "notebook not found")
 	}

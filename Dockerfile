@@ -9,8 +9,11 @@ RUN go get gonum.org/v1/plot/vg
 RUN go get gonum.org/v1/plot/plotter
 RUN go get gonum.org/v1/plot/plotutil
 
+# Cells run arbitrary Go code with the server's privileges: keep it non-root.
+RUN adduser -D gonote && chown -R gonote /app /go
+USER gonote
 
-CMD ["/app/go-notebook"]
+CMD ["/app/go-notebook", "-p", "0.0.0.0:1323"]
 
 ## docker login docker.io
 ## docker build .  -t arturoeanton/go-notebook
