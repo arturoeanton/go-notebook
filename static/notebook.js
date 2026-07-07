@@ -5,7 +5,7 @@
  * - Keeps the underlying textarea in sync so the server can read its value.
  * - Shift+Enter / Ctrl+Enter runs the cell.
  * - Light/dark theme toggle persisted in localStorage.
- * - Triggers the initial notebook load once the LiveView socket is open.
+ * (The initial notebook load is triggered server side by the layout.)
  */
 (function () {
     'use strict';
@@ -104,19 +104,6 @@
             observer.observe(content, { childList: true, subtree: true });
         }
         initEditors(document);
-
-        // Load the notebook as soon as the LiveView socket is ready.
-        var tries = 0;
-        var timer = setInterval(function () {
-            tries++;
-            if (window.ws && window.ws.readyState === WebSocket.OPEN &&
-                typeof window.send_event === 'function') {
-                clearInterval(timer);
-                window.send_event('link_reload', 'Click');
-            } else if (tries > 100) {
-                clearInterval(timer);
-            }
-        }, 100);
     }
 
     if (document.readyState === 'loading') {

@@ -56,7 +56,6 @@ func newInterpreter() *fast.Interp {
 	g.ParserMode = 0
 	g.Options |= base.OptDebugger |
 		base.OptCtrlCEnterDebugger |
-		base.OptKeepUntyped |
 		base.OptTrapPanic |
 		base.OptModuleImport
 	g.Options &^= base.OptShowPrompt | base.OptShowEval | base.OptShowEvalType
@@ -126,7 +125,7 @@ func main() {
 			Caption: `<span class="btn-ico">⟳</span> Reload`,
 			Title:   "Reload the current notebook",
 		})
-		linkReload.Events["Click"] = func(c *LinkMenu, data interface{}) {
+		reloadNotebook := func(data interface{}) {
 			note = Note{Order: make([]string, 0), Items: make(map[string]Item)}
 			linkReload.FillValueById("main_div", "")
 			defaultCode, _ := liveview.FileToString("default.gonote")
@@ -177,6 +176,15 @@ func main() {
 			linkReload.FillValueById("notebook_name", notebookName)
 			linkReload.EvalScript("var nb=document.getElementById('notebook'); if(nb){nb.value=" + jsString(notebookName) + "}")
 		}
+		linkReload.Events["Click"] = func(c *LinkMenu, data interface{}) {
+			reloadNotebook(data)
+		}
+
+		// Load the notebook as soon as the layout is mounted: triggering this
+		// server side avoids racing the WebSocket handshake from JavaScript.
+		page.Component.SetHandlerFirstTime(func() {
+			reloadNotebook(nil)
+		})
 
 		return page.Mount(linkAddCode.Component).
 			Mount(linkAddMD.Component).
