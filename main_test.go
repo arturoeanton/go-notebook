@@ -84,6 +84,26 @@ func TestXMLSnippet(t *testing.T) {
 	}
 }
 
+func TestSanitizeNotebookName(t *testing.T) {
+	cases := map[string]string{
+		"default":                 "default",
+		"../../etc/passwd":        "passwd",
+		"ventas 2026":             "ventas 2026",
+		"a/b/c.gonote.json":       "c",
+		"<script>":                "script",
+		"..":                      "",
+		"":                        "",
+		"reporte-mensual_v2":      "reporte-mensual_v2",
+		"notebooks/x.gonote.json": "x",
+		"nombre'; drop table --":  "nombre drop table --",
+	}
+	for in, want := range cases {
+		if got := sanitizeNotebookName(in); got != want {
+			t.Errorf("sanitizeNotebookName(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
 func TestChartsSnippet(t *testing.T) {
 	interp := newTestInterpreter(t)
 	out := evalSnippet(t, interp, "snippet/charts.gonote")

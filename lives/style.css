@@ -55,6 +55,113 @@ body {
 }
 
 /* ---------------------------------------------------------------------------
+   App shell + sidebar
+--------------------------------------------------------------------------- */
+.app {
+    display: flex;
+    min-height: 100vh;
+    align-items: stretch;
+}
+
+.app-main {
+    flex: 1;
+    min-width: 0;
+}
+
+.sidebar {
+    width: 230px;
+    flex: none;
+    background: var(--bg-panel);
+    border-right: 1px solid var(--border);
+    padding: 12px 10px;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+}
+
+.sidebar--hidden { display: none; }
+
+.sidebar-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 2px 6px 10px;
+}
+
+.sidebar-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-dim);
+}
+
+.nb-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.nb-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    border-radius: 8px;
+    padding: 6px 8px;
+    cursor: pointer;
+}
+
+.nb-item:hover { background: var(--bg-inset); }
+
+.nb-item.nb-active {
+    background: var(--accent-soft);
+}
+
+.nb-item.nb-active .nb-name { color: var(--accent-strong); font-weight: 600; }
+
+.nb-name {
+    flex: 1;
+    min-width: 0;
+    font-size: 13.5px;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+}
+
+.nb-actions {
+    display: none;
+    gap: 2px;
+    flex: none;
+}
+
+.nb-item:hover .nb-actions { display: flex; }
+
+.nb-actions button {
+    border: none;
+    background: transparent;
+    color: var(--text-dim);
+    font-size: 12px;
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.nb-actions button:hover {
+    background: var(--accent-soft);
+    color: var(--accent-strong);
+}
+
+.sidebar-toggle { margin-right: 2px; }
+
+/* ---------------------------------------------------------------------------
    Top bar
 --------------------------------------------------------------------------- */
 .topbar {
@@ -539,6 +646,14 @@ div.output-body { white-space: normal; }
    Misc
 --------------------------------------------------------------------------- */
 ::selection { background: var(--accent-soft); }
+
+@media (max-width: 900px) {
+    .sidebar {
+        position: fixed;
+        z-index: 200;
+        box-shadow: var(--shadow-hover);
+    }
+}
 
 @media (max-width: 720px) {
     .topbar { padding: 8px 12px; }

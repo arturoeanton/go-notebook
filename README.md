@@ -16,6 +16,10 @@ You can add code and text depends your needs.
 ## Features
 
 * Modern UI with light/dark theme, CodeMirror editor with Go syntax highlighting, and keyboard shortcuts (run cells with `Shift+Enter`).
+* Notebook manager sidebar: create, rename, duplicate and delete notebooks.
+* Per-tab sessions: each browser tab gets its own notebook and interpreter.
+* Cell outputs are persisted with the notebook and survive reloads; saving is automatic (debounced).
+* Export any notebook as a standalone HTML page (`Export` button or `/export/<name>`).
 * Markdown cells rendered server-side.
 * Bundled libraries, importable from any cell with **no network access or plugin compilation** (precompiled gomacro bindings in `bindings/`):
   * [go-pandas](https://github.com/arturoeanton/go-pandas) — DataFrames for Go (`import pd "github.com/arturoeanton/go-pandas"`)

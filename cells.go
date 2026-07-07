@@ -19,6 +19,7 @@ import (
 // preview depending on whether Result is empty.
 type TextMD struct {
 	Driver      *liveview.ComponentDriver[*TextMD] `json:"-"`
+	Session     *Session                           `json:"-"`
 	UUID        string                             `json:"uuid"`
 	Id          string                             `json:"id"`
 	CodeMD      string                             `json:"code_md"`
@@ -38,53 +39,42 @@ func (t *TextMD) GetTemplate() string {
 func (t *TextMD) Start() {
 	t.UUID = uuid.New().String()
 	t.Driver.Commit()
-	if !liveview.ContainsString(note.Order, t.Id) {
-		note.Order = append(note.Order, t.Id)
-	}
-	note.Items[t.Id] = Item{MD: t}
-	saveNote()
+	t.Session.touch(t.Id, Item{MD: t})
 }
 
 func (t *TextMD) Click(data interface{}) {
 	if t.Result != "" {
 		t.Result = ""
 		t.Driver.Commit()
-		note.Items[t.Id] = Item{MD: t}
-		saveNote()
+		t.Session.touch(t.Id, Item{MD: t})
 		return
 	}
 	t.CodeMD = t.Driver.GetElementById(t.UUID + "_text_md")
 	md := []byte(t.CodeMD)
 	t.Result = string(markdown.ToHTML(md, nil, nil))
 	t.Driver.Commit()
-	note.Items[t.Id] = Item{MD: t}
-	saveNote()
+	t.Session.touch(t.Id, Item{MD: t})
 }
 
 func (t *TextMD) Remove(data interface{}) {
-	delete(note.Items, t.Id)
-	for i, id := range note.Order {
-		if id == t.Id {
-			note.Order = append(note.Order[:i], note.Order[i+1:]...)
-			break
-		}
-	}
+	t.Session.removeItem(t.Id)
 	t.Driver.Remove(t.Id)
-	saveNote()
 }
 
-// Shell is a Go code cell evaluated with gomacro.
+// Shell is a Go code cell evaluated with gomacro. Its outputs are persisted
+// with the notebook, so results survive reloads.
 type Shell struct {
 	Driver      *liveview.ComponentDriver[*Shell] `json:"-"`
+	Session     *Session                          `json:"-"`
 	Interpreter *fast.Interp                      `json:"-"`
 	Debug       bool                              `json:"debug"`
 	UUID        string                            `json:"uuid"`
 	Id          string                            `json:"id"`
 	Code        string                            `json:"code"`
 	CaptionPlay string                            `json:"caption_play"`
-	Result      string                            `json:"-"`
-	Out         string                            `json:"-"`
-	Err         string                            `json:"-"`
+	Result      string                            `json:"result,omitempty"`
+	Out         string                            `json:"out,omitempty"`
+	Err         string                            `json:"err,omitempty"`
 }
 
 func (t *Shell) GetDriver() liveview.LiveDriver {
@@ -97,26 +87,14 @@ func (t *Shell) GetTemplate() string {
 }
 
 func (t *Shell) Start() {
-	t.Out = ""
 	t.UUID = uuid.New().String()
 	t.Driver.Commit()
-	if !liveview.ContainsString(note.Order, t.Id) {
-		note.Order = append(note.Order, t.Id)
-	}
-	note.Items[t.Id] = Item{Shell: t}
-	saveNote()
+	t.Session.touch(t.Id, Item{Shell: t})
 }
 
 func (t *Shell) Remove(data interface{}) {
-	delete(note.Items, t.Id)
-	for i, id := range note.Order {
-		if id == t.Id {
-			note.Order = append(note.Order[:i], note.Order[i+1:]...)
-			break
-		}
-	}
+	t.Session.removeItem(t.Id)
 	t.Driver.Remove(t.Id)
-	saveNote()
 }
 
 func (t *Shell) Click(data interface{}) {
@@ -153,8 +131,7 @@ func (t *Shell) Click(data interface{}) {
 		t.Out = html.EscapeString(<-outC)
 
 		t.Driver.Commit()
-		note.Items[t.Id] = Item{Shell: t}
-		saveNote()
+		t.Session.touch(t.Id, Item{Shell: t})
 	}()
 
 	values, types := t.Interpreter.Eval(t.Code)

@@ -7,6 +7,7 @@ import (
 	"flag"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/arturoeanton/go-echo-live-view/liveview"
@@ -68,14 +69,18 @@ func newInterpreter() *fast.Interp {
 }
 
 func main() {
-	filename := flag.String("f", "notebooks/default.gonote.json", "GoNotebookFile")
+	filename := flag.String("f", "default", "default notebook name")
 	port := flag.String("p", ":1323", "port")
 	flag.Parse()
-	notebookFile = *filename
+	defaultNotebook := sanitizeNotebookName(*filename)
+	if defaultNotebook == "" {
+		defaultNotebook = "default"
+	}
 
 	e := echo.New()
 	e.HideBanner = true
 	e.Static("/static", "static")
+	e.GET("/export/:name", exportHandler)
 	css, _ := liveview.FileToString("lives/style.css")
 	home := liveview.PageControl{
 		Title:    "Go Notebook",
@@ -91,6 +96,7 @@ func main() {
 
 	home.Register(func() liveview.LiveDriver {
 		interp := newInterpreter()
+		session := newSession(defaultNotebook, interp)
 
 		page := liveview.NewLayout("notebook", "lives/layout.html")
 
@@ -108,7 +114,7 @@ func main() {
 				}
 			}
 
-			newShell := &Shell{Debug: true, Interpreter: interp, CaptionPlay: "Play", Code: code}
+			newShell := &Shell{Debug: true, Session: session, Interpreter: interp, CaptionPlay: "Play", Code: code}
 			addShell(idShell, page, newShell)
 		}
 
@@ -118,32 +124,51 @@ func main() {
 		})
 		linkAddMD.Events["Click"] = func(c *LinkMenu, data interface{}) {
 			idText := "text_" + uuid.NewString()
-			addMD(idText, page, &TextMD{CaptionPlay: "Print"})
+			addMD(idText, page, &TextMD{Session: session, CaptionPlay: "Print"})
 		}
 
 		linkReload := liveview.NewDriver("link_reload", &LinkMenu{
 			Caption: `<span class="btn-ico">⟳</span> Reload`,
 			Title:   "Reload the current notebook",
 		})
-		reloadNotebook := func(data interface{}) {
-			note = Note{Order: make([]string, 0), Items: make(map[string]Item)}
+
+		refreshSidebar := func() {
+			current := session.notebookName()
+			var sb strings.Builder
+			for _, n := range listNotebooks() {
+				active := ""
+				if n == current {
+					active = " nb-active"
+				}
+				esc := "'" + n + "'" // names are sanitized: no quotes possible
+				sb.WriteString(`<li class="nb-item` + active + `">`)
+				sb.WriteString(`<a class="nb-name" onclick="send_event('link_reload','Open',` + esc + `)">` + n + `</a>`)
+				sb.WriteString(`<span class="nb-actions">`)
+				sb.WriteString(`<button title="Rename" onclick="nbRename(` + esc + `)">✎</button>`)
+				sb.WriteString(`<button title="Duplicate" onclick="send_event('link_reload','Duplicate',` + esc + `)">⧉</button>`)
+				sb.WriteString(`<button title="Delete" onclick="nbDelete(` + esc + `)">✕</button>`)
+				sb.WriteString(`</span></li>`)
+			}
+			linkReload.FillValueById("nb_list", sb.String())
+		}
+
+		openNotebook := func(name string) {
+			name = sanitizeNotebookName(name)
+			if name == "" {
+				name = defaultNotebook
+			}
 			linkReload.FillValueById("main_div", "")
 			defaultCode, _ := liveview.FileToString("default.gonote")
 			interp.Eval(defaultCode)
-			if name, ok := data.(string); ok && name != "" {
-				notebookFile = "notebooks/" + name + ".gonote.json"
-			}
-			if !liveview.Exists(notebookFile) {
-				liveview.StringToFile(notebookFile, `{"order":[], "Items":{}}`)
-			}
-			jsonString, _ := liveview.FileToString(notebookFile)
-			json.Unmarshal([]byte(jsonString), &note)
-			for _, key := range note.Order {
-				item := note.Items[key]
+			session.load(name)
+			for _, key := range session.snapshotOrder() {
+				item := session.item(key)
 				if item.MD != nil {
+					item.MD.Session = session
 					addMD(key, page, item.MD)
 				}
 				if item.Shell != nil {
+					item.Shell.Session = session
 					item.Shell.Interpreter = interp
 					item.Shell.CaptionPlay = "Play"
 					addShell(key, page, item.Shell)
@@ -153,37 +178,96 @@ func main() {
 			options := "<option value=\"\">Insert snippet…</option>"
 			filepath.Walk("snippet/", func(path string, info os.FileInfo, err error) error {
 				if err == nil && strings.HasSuffix(info.Name(), ".gonote") {
-					name := strings.Split(info.Name(), ".")[0]
-					options += "<option>" + name + "</option>"
+					n := strings.Split(info.Name(), ".")[0]
+					options += "<option>" + n + "</option>"
 				}
 				return nil
 			})
 			linkReload.FillValueById("snippet", options)
 
-			optionsNotebook := ""
-			filepath.Walk("notebooks/", func(path string, info os.FileInfo, err error) error {
-				if err == nil && strings.HasSuffix(info.Name(), ".gonote.json") {
-					name := strings.TrimSuffix(info.Name(), ".gonote.json")
-					if name != "" {
-						optionsNotebook += "<option>" + name + "</option>"
-					}
-				}
-				return nil
-			})
-			linkReload.FillValueById("notebooks", optionsNotebook)
-
-			notebookName := strings.TrimSuffix(filepath.Base(notebookFile), ".gonote.json")
-			linkReload.FillValueById("notebook_name", notebookName)
-			linkReload.EvalScript("var nb=document.getElementById('notebook'); if(nb){nb.value=" + jsString(notebookName) + "}")
+			linkReload.FillValueById("notebook_name", name)
+			refreshSidebar()
+			// name is sanitized: safe to embed
+			linkReload.EvalScript("localStorage.setItem('gonotebook-nb', '" + name + "'); window.scrollTo({top:0})")
 		}
+
 		linkReload.Events["Click"] = func(c *LinkMenu, data interface{}) {
-			reloadNotebook(data)
+			openNotebook(session.notebookName())
+		}
+		linkReload.Events["Open"] = func(c *LinkMenu, data interface{}) {
+			if name, ok := data.(string); ok {
+				openNotebook(name)
+			}
+		}
+		linkReload.Events["Create"] = func(c *LinkMenu, data interface{}) {
+			name := sanitizeNotebookName(toString(data))
+			if name == "" {
+				return
+			}
+			openNotebook(name) // load() creates the file when missing
+		}
+		linkReload.Events["Delete"] = func(c *LinkMenu, data interface{}) {
+			name := sanitizeNotebookName(toString(data))
+			if name == "" {
+				return
+			}
+			os.Remove(notebookPath(name))
+			if name == session.notebookName() {
+				openNotebook(defaultNotebook)
+				return
+			}
+			refreshSidebar()
+		}
+		linkReload.Events["Duplicate"] = func(c *LinkMenu, data interface{}) {
+			name := sanitizeNotebookName(toString(data))
+			if name == "" {
+				return
+			}
+			src, err := os.ReadFile(notebookPath(name))
+			if err != nil {
+				return
+			}
+			copyName := name + "-copy"
+			for i := 2; liveview.Exists(notebookPath(copyName)); i++ {
+				copyName = name + "-copy" + strconv.Itoa(i)
+			}
+			liveview.StringToFile(notebookPath(copyName), string(src))
+			refreshSidebar()
+		}
+		linkReload.Events["Rename"] = func(c *LinkMenu, data interface{}) {
+			var req struct {
+				Old string `json:"old"`
+				New string `json:"new"`
+			}
+			if err := json.Unmarshal([]byte(toString(data)), &req); err != nil {
+				return
+			}
+			oldName := sanitizeNotebookName(req.Old)
+			newName := sanitizeNotebookName(req.New)
+			if oldName == "" || newName == "" || oldName == newName {
+				return
+			}
+			if liveview.Exists(notebookPath(newName)) {
+				return
+			}
+			if err := os.Rename(notebookPath(oldName), notebookPath(newName)); err != nil {
+				return
+			}
+			if oldName == session.notebookName() {
+				openNotebook(newName)
+				return
+			}
+			refreshSidebar()
 		}
 
 		// Load the notebook as soon as the layout is mounted: triggering this
 		// server side avoids racing the WebSocket handshake from JavaScript.
 		page.Component.SetHandlerFirstTime(func() {
-			reloadNotebook(nil)
+			openNotebook(session.notebookName())
+		})
+		// Persist any pending changes when the connection closes.
+		page.Component.SetHandlerEventDestroy(func(id string) {
+			session.Flush()
 		})
 
 		return page.Mount(linkAddCode.Component).
@@ -192,6 +276,11 @@ func main() {
 	})
 
 	e.Logger.Fatal(e.Start(*port))
+}
+
+func toString(data interface{}) string {
+	s, _ := data.(string)
+	return s
 }
 
 func jsString(s string) string {
