@@ -1,0 +1,21 @@
+import (
+	"fmt"
+	"strings"
+
+	gx "github.com/arturoeanton/go-xml/xml"
+)
+
+data := `<library>
+	<book id="1"><title>El Principito</title><year>1943</year></book>
+	<book id="2"><title>Rayuela</title><year>1963</year></book>
+</library>`
+
+m, err := gx.MapXML(strings.NewReader(data), gx.ForceArray("book"))
+if err != nil {
+	fmt.Println(err)
+}
+
+title, _ := gx.Query(m, "library/book/title/#text")
+id, _ := gx.Query(m, "library/book/@id")
+fmt.Println("first title:", title)
+fmt.Println("first id:", id)

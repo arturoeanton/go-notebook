@@ -1,0 +1,18 @@
+import (
+	"fmt"
+	pd "github.com/arturoeanton/go-pandas"
+)
+
+df, err := pd.DataFrameFromRecords([]map[string]any{
+	{"name": "Ana", "age": 30, "city": "Madrid"},
+	{"name": "Luis", "age": 40, "city": "Bogotá"},
+	{"name": "Marta", "age": 25, "city": "Buenos Aires"},
+}, pd.WithColumnOrder("name", "age", "city"))
+if err != nil {
+	fmt.Println(err)
+}
+
+adults, _ := df.Where(pd.Col("age").Gt(28))
+fmt.Println("rows:", df.Len())
+
+ShowDF(adults)

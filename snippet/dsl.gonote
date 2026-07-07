@@ -1,0 +1,32 @@
+import (
+	"strconv"
+
+	"github.com/arturoeanton/go-dsl/pkg/dslbuilder"
+)
+
+calc := dslbuilder.New("Calc")
+calc.Token("NUMBER", "[0-9]+")
+calc.Token("PLUS", "\\+")
+calc.Token("TIMES", "\\*")
+calc.Rule("expr", []string{"NUMBER", "PLUS", "NUMBER"}, "add")
+calc.Rule("expr", []string{"NUMBER", "TIMES", "NUMBER"}, "mul")
+
+calc.Action("add", func(args []interface{}) (interface{}, error) {
+	sa := args[0].(string)
+	sb := args[2].(string)
+	a, _ := strconv.Atoi(sa)
+	b, _ := strconv.Atoi(sb)
+	return a + b, nil
+})
+calc.Action("mul", func(args []interface{}) (interface{}, error) {
+	sa := args[0].(string)
+	sb := args[2].(string)
+	a, _ := strconv.Atoi(sa)
+	b, _ := strconv.Atoi(sb)
+	return a * b, nil
+})
+
+sum, _ := calc.Parse("2+3")
+prod, _ := calc.Parse("6*7")
+sum.GetOutput()
+prod.GetOutput()

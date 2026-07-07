@@ -1,3 +1,39 @@
+// Preamble evaluated in every notebook session.
+// Helpers defined here are available from every code cell.
+
+import (
+	"fmt"
+	"strings"
+
+	pd "github.com/arturoeanton/go-pandas"
+)
+
+var htmlEscaper = strings.NewReplacer("&", "&amp;", "<", "&lt;", ">", "&gt;", `"`, "&#34;")
+
+// ShowHTML renders s as raw HTML in the cell result.
+func ShowHTML(s string) string {
+	return "<div class=\"html-result\">" + s + "</div>"
+}
+
+// ShowDF renders a go-pandas DataFrame as an HTML table.
+func ShowDF(df *pd.DataFrame) string {
+	var sb strings.Builder
+	sb.WriteString("<div class=\"df-table\"><table><thead><tr>")
+	for _, c := range df.Columns() {
+		sb.WriteString("<th>" + htmlEscaper.Replace(c) + "</th>")
+	}
+	sb.WriteString("</tr></thead><tbody>")
+	for _, row := range df.ToRows() {
+		sb.WriteString("<tr>")
+		for _, v := range row {
+			sb.WriteString("<td>" + htmlEscaper.Replace(fmt.Sprint(v)) + "</td>")
+		}
+		sb.WriteString("</tr>")
+	}
+	sb.WriteString("</tbody></table></div>")
+	return sb.String()
+}
+
 /*
 import "gonum.org/v1/plot"
 import "gonum.org/v1/plot/vg"
@@ -13,4 +49,3 @@ func ShowPlot(p *plot.Plot) string {
 }
 
 //v1*/
-
