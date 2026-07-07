@@ -1,0 +1,34 @@
+import (
+	"strings"
+
+	pd "github.com/arturoeanton/go-pandas"
+)
+
+csv := `month,region,sales
+Jan,North,120
+Jan,South,95
+Feb,North,132
+Feb,South,101
+Mar,North,151
+Mar,South,110
+Apr,North,142
+Apr,South,125
+May,North,168
+May,South,131
+Jun,North,175
+Jun,South,140`
+
+df, err := pd.ReadCSVReader(strings.NewReader(csv))
+if err != nil {
+	panic(err)
+}
+
+byRegion, _ := df.GroupBy("region").Sum("sales")
+north, _ := df.Where(pd.Col("region").Eq("North"))
+south, _ := df.Where(pd.Col("region").Eq("South"))
+
+ShowHTML(
+	ShowDF(byRegion) +
+		BarChart(ColS(byRegion, "region"), ColF(byRegion, "sales"), "Total sales by region") +
+		LineChart(ColS(north, "month"), []string{"North", "South"},
+			[][]float64{ColF(north, "sales"), ColF(south, "sales")}, "Monthly sales by region"))

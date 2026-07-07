@@ -34,6 +34,171 @@ func ShowDF(df *pd.DataFrame) string {
 	return sb.String()
 }
 
+// toFloat converts any numeric cell value to float64.
+func toFloat(v interface{}) float64 {
+	switch n := v.(type) {
+	case float64:
+		return n
+	case float32:
+		return float64(n)
+	case int:
+		return float64(n)
+	case int64:
+		return float64(n)
+	case int32:
+		return float64(n)
+	}
+	return 0
+}
+
+// ColF extracts a DataFrame column as []float64 (for charts).
+func ColF(df *pd.DataFrame, name string) []float64 {
+	s, err := df.Col(name)
+	if err != nil {
+		panic(err)
+	}
+	out := make([]float64, s.Len())
+	for i := 0; i < s.Len(); i++ {
+		v, _ := s.At(i)
+		out[i] = toFloat(v)
+	}
+	return out
+}
+
+// ColS extracts a DataFrame column as []string (for chart labels).
+func ColS(df *pd.DataFrame, name string) []string {
+	s, err := df.Col(name)
+	if err != nil {
+		panic(err)
+	}
+	out := make([]string, s.Len())
+	for i := 0; i < s.Len(); i++ {
+		v, _ := s.At(i)
+		out[i] = fmt.Sprint(v)
+	}
+	return out
+}
+
+var chartColors = []string{"#00add8", "#8b5cf6", "#f59e0b", "#ef4444", "#10b981", "#ec4899"}
+
+func chartOpen(title string) string {
+	s := "<div class=\"html-result chart\"><svg viewBox=\"0 0 640 320\" style=\"max-width:640px;width:100%;font-family:inherit\">"
+	if title != "" {
+		s += "<text x=\"320\" y=\"20\" text-anchor=\"middle\" style=\"fill:var(--text);font-size:15px;font-weight:600\">" +
+			htmlEscaper.Replace(title) + "</text>"
+	}
+	return s
+}
+
+func chartGrid(minV, maxV float64) string {
+	var sb strings.Builder
+	for i := 0; i <= 4; i++ {
+		y := 40.0 + 230.0*float64(i)/4.0
+		v := maxV - (maxV-minV)*float64(i)/4.0
+		sb.WriteString(fmt.Sprintf("<line x1=\"52\" y1=\"%.1f\" x2=\"624\" y2=\"%.1f\" style=\"stroke:var(--border);stroke-width:1\"/>", y, y))
+		sb.WriteString(fmt.Sprintf("<text x=\"46\" y=\"%.1f\" text-anchor=\"end\" style=\"fill:var(--text-dim);font-size:10px\">%.4g</text>", y+3, v))
+	}
+	return sb.String()
+}
+
+// BarChart renders labels/values as an SVG bar chart.
+// Example: BarChart(ColS(df, "region"), ColF(df, "sales"), "Sales by region")
+func BarChart(labels []string, values []float64, title string) string {
+	maxV := 0.0
+	for _, v := range values {
+		if v > maxV {
+			maxV = v
+		}
+	}
+	if maxV == 0 {
+		maxV = 1
+	}
+	var sb strings.Builder
+	sb.WriteString(chartOpen(title))
+	sb.WriteString(chartGrid(0, maxV))
+	n := len(values)
+	step := 572.0 / float64(n)
+	bw := step * 0.62
+	for i := 0; i < n; i++ {
+		h := values[i] / maxV * 230.0
+		x := 52.0 + float64(i)*step + (step-bw)/2
+		y := 270.0 - h
+		color := chartColors[0]
+		sb.WriteString(fmt.Sprintf("<rect x=\"%.1f\" y=\"%.1f\" width=\"%.1f\" height=\"%.1f\" rx=\"3\" style=\"fill:%s\"/>", x, y, bw, h, color))
+		sb.WriteString(fmt.Sprintf("<text x=\"%.1f\" y=\"%.1f\" text-anchor=\"middle\" style=\"fill:var(--text-dim);font-size:10px\">%s</text>",
+			x+bw/2, y-5, htmlEscaper.Replace(fmt.Sprintf("%.4g", values[i]))))
+		if i%((n+11)/12) == 0 {
+			sb.WriteString(fmt.Sprintf("<text x=\"%.1f\" y=\"288\" text-anchor=\"middle\" style=\"fill:var(--text-dim);font-size:10.5px\">%s</text>",
+				x+bw/2, htmlEscaper.Replace(labels[i])))
+		}
+	}
+	sb.WriteString("</svg></div>")
+	return sb.String()
+}
+
+// LineChart renders one or more series as an SVG line chart.
+// Example: LineChart(months, []string{"north", "south"}, [][]float64{n, s}, "Sales")
+func LineChart(labels []string, names []string, series [][]float64, title string) string {
+	minV, maxV := 0.0, 0.0
+	first := true
+	for _, s := range series {
+		for _, v := range s {
+			if first {
+				minV, maxV = v, v
+				first = false
+			}
+			if v < minV {
+				minV = v
+			}
+			if v > maxV {
+				maxV = v
+			}
+		}
+	}
+	if maxV == minV {
+		maxV = minV + 1
+	}
+	if minV > 0 {
+		minV = 0
+	}
+	var sb strings.Builder
+	sb.WriteString(chartOpen(title))
+	sb.WriteString(chartGrid(minV, maxV))
+	n := 0
+	for _, s := range series {
+		if len(s) > n {
+			n = len(s)
+		}
+	}
+	if n < 2 {
+		n = 2
+	}
+	step := 572.0 / float64(n-1)
+	for si := 0; si < len(series); si++ {
+		color := chartColors[si%len(chartColors)]
+		pts := ""
+		for i, v := range series[si] {
+			x := 52.0 + float64(i)*step
+			y := 270.0 - (v-minV)/(maxV-minV)*230.0
+			pts += fmt.Sprintf("%.1f,%.1f ", x, y)
+		}
+		sb.WriteString("<polyline points=\"" + pts + "\" style=\"fill:none;stroke:" + color + ";stroke-width:2.5;stroke-linejoin:round\"/>")
+		if si < len(names) {
+			lx := 60 + si*110
+			sb.WriteString(fmt.Sprintf("<rect x=\"%d\" y=\"301\" width=\"10\" height=\"10\" rx=\"2\" style=\"fill:%s\"/>", lx, color))
+			sb.WriteString(fmt.Sprintf("<text x=\"%d\" y=\"310\" style=\"fill:var(--text-dim);font-size:11px\">%s</text>",
+				lx+14, htmlEscaper.Replace(names[si])))
+		}
+	}
+	for i := 0; i < len(labels); i += (len(labels) + 11) / 12 {
+		x := 52.0 + float64(i)*step
+		sb.WriteString(fmt.Sprintf("<text x=\"%.1f\" y=\"288\" text-anchor=\"middle\" style=\"fill:var(--text-dim);font-size:10.5px\">%s</text>",
+			x, htmlEscaper.Replace(labels[i])))
+	}
+	sb.WriteString("</svg></div>")
+	return sb.String()
+}
+
 /*
 import "gonum.org/v1/plot"
 import "gonum.org/v1/plot/vg"

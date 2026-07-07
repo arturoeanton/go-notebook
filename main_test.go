@@ -84,6 +84,21 @@ func TestXMLSnippet(t *testing.T) {
 	}
 }
 
+func TestChartsSnippet(t *testing.T) {
+	interp := newTestInterpreter(t)
+	out := evalSnippet(t, interp, "snippet/charts.gonote")
+	if !strings.HasPrefix(out, "<div") {
+		t.Fatalf("charts cell should return raw HTML, got: %q", out)
+	}
+	if svgs := strings.Count(out, "<svg"); svgs != 2 {
+		t.Fatalf("expected 2 SVG charts, got %d in: %q", svgs, out[:200])
+	}
+	if !strings.Contains(out, "<table>") || !strings.Contains(out, "polyline") ||
+		!strings.Contains(out, "North") {
+		t.Fatalf("expected table, bar and line chart with data, got: %q", out[:300])
+	}
+}
+
 func TestShowDFHelper(t *testing.T) {
 	interp := newTestInterpreter(t)
 	defer func() {
