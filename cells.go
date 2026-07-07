@@ -121,6 +121,8 @@ func (t *Shell) Remove(data interface{}) {
 
 func (t *Shell) Click(data interface{}) {
 	t.Driver.EvalScript("var c=document.getElementById('" + t.UUID + "_div_code'); if(c){c.classList.add('cell--running')}")
+	t.Driver.FillValueById(t.UUID+"_status",
+		`<span class="status-dot"></span> Running… importing a package for the first time can take a minute while it compiles.`)
 
 	old := os.Stdout // keep backup of the real stdout
 	oldErr := os.Stderr

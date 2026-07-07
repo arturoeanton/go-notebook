@@ -284,6 +284,32 @@ body {
 }
 
 /* Running state */
+.cell-status {
+    display: none;
+    margin-right: 10px;
+    font-size: 12.5px;
+    color: var(--text-dim);
+    align-items: center;
+    gap: 8px;
+}
+
+.cell-status:not(:empty),
+.cell--running .cell-status { display: flex; }
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    flex: none;
+    animation: status-pulse 1s ease-in-out infinite;
+}
+
+@keyframes status-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%      { opacity: 0.35; transform: scale(0.75); }
+}
+
 .cell--running { pointer-events: none; }
 
 .cell--running::after {

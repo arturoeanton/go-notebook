@@ -10,6 +10,7 @@
             <textarea class="code-editor" data-cell="{{.Id}}" data-mode="text/x-go"
                       id="{{.UUID}}_code" spellcheck="false">{{.Code}}</textarea>
         </div>
+        <div class="cell-status" id="{{.UUID}}_status"></div>
         {{if ne .Err "" }}
         <div class="cell-output cell-error">
             <span class="output-label">Error</span>

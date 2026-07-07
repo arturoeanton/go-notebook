@@ -23,7 +23,7 @@ You can add code and text depends your needs.
   * [go-xml](https://github.com/arturoeanton/go-xml) — XML parsing and queries (`import gx "github.com/arturoeanton/go-xml/xml"`)
 * Helpers available in every cell (defined in `default.gonote`): `ShowDF(df)` renders a DataFrame as an HTML table, `ShowHTML(s)` renders raw HTML.
 * Other third-party packages can still be imported at runtime through gomacro module imports (requires the Go toolchain and network).
-* Try the bundled demo: load the `showcase` notebook from the toolbar.
+* The default notebook demos the bundled libraries and runs instantly. The `gonum` notebook (pick it from the toolbar) demos gonum/plot: its first run downloads and compiles the package on the fly, which can take a minute or two.
 
 ## Requirements
 
