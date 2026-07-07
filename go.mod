@@ -10,7 +10,7 @@ require (
 	github.com/cosmos72/gomacro v0.0.0-20251011163654-53dd3d49f67b
 	github.com/gomarkdown/markdown v0.0.0-20260614204949-e08cff860f76
 	github.com/google/uuid v1.6.0
-	github.com/labstack/echo/v4 v4.15.4
+	github.com/labstack/echo/v4 v4.13.4
 )
 
 require (
@@ -26,12 +26,19 @@ require (
 	github.com/stretchr/testify v1.11.1 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
-	golang.org/x/crypto v0.53.0 // indirect
-	golang.org/x/mod v0.36.0 // indirect
-	golang.org/x/net v0.56.0 // indirect
+	golang.org/x/crypto v0.38.0 // indirect
+	golang.org/x/mod v0.26.0 // indirect
+	golang.org/x/net v0.40.0 // indirect
 	golang.org/x/sync v0.21.0 // indirect
 	golang.org/x/sys v0.46.0 // indirect
-	golang.org/x/text v0.38.0 // indirect
-	golang.org/x/tools v0.45.0 // indirect
+	golang.org/x/text v0.28.0 // indirect
+	golang.org/x/tools v0.35.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+// x/tools must stay at the version gomacro requires: newer gcimporters always
+// materialize types.Alias, which gomacro's import scanner cannot handle yet
+// ("unexpected type ..." when importing packages at runtime). x/text is kept
+// at the version gomacro's runtime plugins resolve, so plugin.Open accepts
+// them (host and plugin must share identical package versions).
+replace golang.org/x/tools => golang.org/x/tools v0.25.1

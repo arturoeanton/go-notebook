@@ -1,9 +1,21 @@
 import (
 	"math/rand"
+
+	"github.com/google/uuid"
 	"gonum.org/v1/plot"
 	"gonum.org/v1/plot/plotter"
 	"gonum.org/v1/plot/plotutil"
+	"gonum.org/v1/plot/vg"
 )
+
+// First run compiles gonum/plot in the background and can take a while.
+func ShowPlot(p *plot.Plot) string {
+	id := uuid.New().String()
+	if err := p.Save(4*vg.Inch, 4*vg.Inch, "static/tmp.png"); err != nil {
+		panic(err)
+	}
+	return "<div><img src='static/tmp.png?_=" + id + "' /></div>"
+}
 
 
 // Get some data.
