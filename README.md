@@ -25,7 +25,10 @@ You can add code and text depends your needs.
   * [go-pandas](https://github.com/arturoeanton/go-pandas) — DataFrames for Go (`import pd "github.com/arturoeanton/go-pandas"`)
   * [go-dsl](https://github.com/arturoeanton/go-dsl) — build small languages (`import "github.com/arturoeanton/go-dsl/pkg/dslbuilder"`)
   * [go-xml](https://github.com/arturoeanton/go-xml) — XML parsing and queries (`import gx "github.com/arturoeanton/go-xml/xml"`)
-* Helpers available in every cell (defined in `default.gonote`): `ShowDF(df)` renders a DataFrame as an HTML table, `ShowHTML(s)` renders raw HTML.
+* Interactive data grid: `ShowGrid(df)` renders a live, server-side grid with sorting, filtering and pagination — only the visible page travels to the browser.
+* SQL built in: `ReadSQL(driver, dsn, query)` returns a go-pandas DataFrame and `SQLExec` runs statements, with **sqlite** (no cgo) and **postgres** drivers compiled into the binary.
+* Native SVG charts with hover tooltips: `BarChart`, `LineChart`, `AreaChart`, `ScatterChart`, `Histogram`, `PieChart` — no plotting engine to compile.
+* Helpers available in every cell (defined in `default.gonote`): `ShowDF(df)` renders a DataFrame as an HTML table, `ShowHTML(s)` renders raw HTML, `ColF`/`ColS` pull DataFrame columns as slices.
 * Other third-party packages can still be imported at runtime through gomacro module imports (requires the Go toolchain and network).
 * The default notebook demos the bundled libraries and runs instantly. The `gonum` notebook (pick it from the toolbar) demos gonum/plot: its first run downloads and compiles the package on the fly, which can take a minute or two.
 

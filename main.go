@@ -97,8 +97,10 @@ func main() {
 	home.Register(func() liveview.LiveDriver {
 		interp := newInterpreter()
 		session := newSession(defaultNotebook, interp)
+		declareHostFuncs(interp, session)
 
 		page := liveview.NewLayout("notebook", "lives/layout.html")
+		session.page = page
 
 		linkAddCode := liveview.NewDriver("link_add_code", &LinkMenu{
 			Caption: `<span class="btn-ico">+</span> Code`,
@@ -304,4 +306,8 @@ func addMD(idText string, page *liveview.ComponentDriver[*liveview.Layout], newT
 
 func scrollToCell(page *liveview.ComponentDriver[*liveview.Layout], id string) {
 	page.EvalScript("var el=document.getElementById(" + jsString(id) + "); if(el){el.scrollIntoView({behavior:'smooth',block:'end'})}")
+}
+
+func newGridDriver(g *DataGrid) liveview.LiveDriver {
+	return liveview.NewDriver(g.Id, g)
 }

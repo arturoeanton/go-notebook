@@ -131,6 +131,7 @@ func (t *Shell) Click(data interface{}) {
 		t.Out = html.EscapeString(<-outC)
 
 		t.Driver.Commit()
+		t.Session.mountPendingGrids()
 		t.Session.touch(t.Id, Item{Shell: t})
 	}()
 

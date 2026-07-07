@@ -3,6 +3,7 @@
 
 import (
 	"fmt"
+	"math"
 	"strings"
 
 	pd "github.com/arturoeanton/go-pandas"
@@ -124,7 +125,8 @@ func BarChart(labels []string, values []float64, title string) string {
 		x := 52.0 + float64(i)*step + (step-bw)/2
 		y := 270.0 - h
 		color := chartColors[0]
-		sb.WriteString(fmt.Sprintf("<rect x=\"%.1f\" y=\"%.1f\" width=\"%.1f\" height=\"%.1f\" rx=\"3\" style=\"fill:%s\"/>", x, y, bw, h, color))
+		tip := htmlEscaper.Replace(labels[i]) + ": " + fmt.Sprintf("%.6g", values[i])
+		sb.WriteString(fmt.Sprintf("<rect x=\"%.1f\" y=\"%.1f\" width=\"%.1f\" height=\"%.1f\" rx=\"3\" style=\"fill:%s\"><title>%s</title></rect>", x, y, bw, h, color, tip))
 		sb.WriteString(fmt.Sprintf("<text x=\"%.1f\" y=\"%.1f\" text-anchor=\"middle\" style=\"fill:var(--text-dim);font-size:10px\">%s</text>",
 			x+bw/2, y-5, htmlEscaper.Replace(fmt.Sprintf("%.4g", values[i]))))
 		if i%((n+11)/12) == 0 {
@@ -197,6 +199,185 @@ func LineChart(labels []string, names []string, series [][]float64, title string
 	}
 	sb.WriteString("</svg></div>")
 	return sb.String()
+}
+
+// ScatterChart renders x/y points as an SVG scatter plot.
+func ScatterChart(xs []float64, ys []float64, title string) string {
+	n := len(xs)
+	if len(ys) < n {
+		n = len(ys)
+	}
+	minX, maxX, minY, maxY := 0.0, 1.0, 0.0, 1.0
+	for i := 0; i < n; i++ {
+		if i == 0 {
+			minX, maxX, minY, maxY = xs[0], xs[0], ys[0], ys[0]
+		}
+		if xs[i] < minX {
+			minX = xs[i]
+		}
+		if xs[i] > maxX {
+			maxX = xs[i]
+		}
+		if ys[i] < minY {
+			minY = ys[i]
+		}
+		if ys[i] > maxY {
+			maxY = ys[i]
+		}
+	}
+	if maxX == minX {
+		maxX = minX + 1
+	}
+	if maxY == minY {
+		maxY = minY + 1
+	}
+	var sb strings.Builder
+	sb.WriteString(chartOpen(title))
+	sb.WriteString(chartGrid(minY, maxY))
+	for i := 0; i < n; i++ {
+		x := 52.0 + (xs[i]-minX)/(maxX-minX)*572.0
+		y := 270.0 - (ys[i]-minY)/(maxY-minY)*230.0
+		tip := fmt.Sprintf("(%.6g, %.6g)", xs[i], ys[i])
+		sb.WriteString(fmt.Sprintf("<circle cx=\"%.1f\" cy=\"%.1f\" r=\"4\" style=\"fill:%s;opacity:0.75\"><title>%s</title></circle>", x, y, chartColors[0], tip))
+	}
+	sb.WriteString(fmt.Sprintf("<text x=\"52\" y=\"288\" style=\"fill:var(--text-dim);font-size:10.5px\">%.4g</text>", minX))
+	sb.WriteString(fmt.Sprintf("<text x=\"624\" y=\"288\" text-anchor=\"end\" style=\"fill:var(--text-dim);font-size:10.5px\">%.4g</text>", maxX))
+	sb.WriteString("</svg></div>")
+	return sb.String()
+}
+
+// Histogram renders the distribution of values in the given number of bins.
+func Histogram(values []float64, bins int, title string) string {
+	if bins < 1 {
+		bins = 10
+	}
+	minV, maxV := 0.0, 1.0
+	for i, v := range values {
+		if i == 0 {
+			minV, maxV = v, v
+		}
+		if v < minV {
+			minV = v
+		}
+		if v > maxV {
+			maxV = v
+		}
+	}
+	if maxV == minV {
+		maxV = minV + 1
+	}
+	counts := make([]float64, bins)
+	width := (maxV - minV) / float64(bins)
+	for _, v := range values {
+		b := int((v - minV) / width)
+		if b >= bins {
+			b = bins - 1
+		}
+		if b < 0 {
+			b = 0
+		}
+		counts[b]++
+	}
+	labels := make([]string, bins)
+	for i := 0; i < bins; i++ {
+		labels[i] = fmt.Sprintf("%.3g", minV+width*float64(i))
+	}
+	return BarChart(labels, counts, title)
+}
+
+// PieChart renders labels/values as an SVG donut chart with a legend.
+func PieChart(labels []string, values []float64, title string) string {
+	total := 0.0
+	for _, v := range values {
+		total += v
+	}
+	if total <= 0 {
+		total = 1
+	}
+	var sb strings.Builder
+	sb.WriteString(chartOpen(title))
+	cx, cy, r := 210.0, 165.0, 105.0
+	angle := -math.Pi / 2
+	for i, v := range values {
+		frac := v / total
+		a2 := angle + frac*2*math.Pi
+		x1 := cx + r*math.Cos(angle)
+		y1 := cy + r*math.Sin(angle)
+		x2 := cx + r*math.Cos(a2)
+		y2 := cy + r*math.Sin(a2)
+		large := 0
+		if frac > 0.5 {
+			large = 1
+		}
+		color := chartColors[i%len(chartColors)]
+		tip := htmlEscaper.Replace(labels[i]) + fmt.Sprintf(": %.6g (%.1f%%)", v, frac*100)
+		sb.WriteString(fmt.Sprintf("<path d=\"M %.2f %.2f A %.2f %.2f 0 %d 1 %.2f %.2f L %.2f %.2f Z\" style=\"fill:%s;stroke:var(--bg-panel);stroke-width:2\"><title>%s</title></path>",
+			x1, y1, r, r, large, x2, y2, cx, cy, color, tip))
+		angle = a2
+	}
+	sb.WriteString(fmt.Sprintf("<circle cx=\"%.1f\" cy=\"%.1f\" r=\"52\" style=\"fill:var(--bg-panel)\"/>", cx, cy))
+	for i, l := range labels {
+		color := chartColors[i%len(chartColors)]
+		y := 70 + i*24
+		pct := values[i] / total * 100
+		sb.WriteString(fmt.Sprintf("<rect x=\"370\" y=\"%d\" width=\"12\" height=\"12\" rx=\"3\" style=\"fill:%s\"/>", y, color))
+		sb.WriteString(fmt.Sprintf("<text x=\"390\" y=\"%d\" style=\"fill:var(--text);font-size:12px\">%s</text>", y+11, htmlEscaper.Replace(l)))
+		sb.WriteString(fmt.Sprintf("<text x=\"624\" y=\"%d\" text-anchor=\"end\" style=\"fill:var(--text-dim);font-size:12px\">%.1f%%</text>", y+11, pct))
+	}
+	sb.WriteString("</svg></div>")
+	return sb.String()
+}
+
+// AreaChart is a LineChart with the area under each series filled.
+func AreaChart(labels []string, names []string, series [][]float64, title string) string {
+	line := LineChart(labels, names, series, title)
+	minV, maxV := 0.0, 0.0
+	first := true
+	for _, s := range series {
+		for _, v := range s {
+			if first {
+				minV, maxV = v, v
+				first = false
+			}
+			if v < minV {
+				minV = v
+			}
+			if v > maxV {
+				maxV = v
+			}
+		}
+	}
+	if maxV == minV {
+		maxV = minV + 1
+	}
+	if minV > 0 {
+		minV = 0
+	}
+	n := 0
+	for _, s := range series {
+		if len(s) > n {
+			n = len(s)
+		}
+	}
+	if n < 2 {
+		n = 2
+	}
+	step := 572.0 / float64(n-1)
+	fills := ""
+	for si := 0; si < len(series); si++ {
+		color := chartColors[si%len(chartColors)]
+		pts := fmt.Sprintf("%.1f,270.0 ", 52.0)
+		lastX := 52.0
+		for i, v := range series[si] {
+			x := 52.0 + float64(i)*step
+			y := 270.0 - (v-minV)/(maxV-minV)*230.0
+			pts += fmt.Sprintf("%.1f,%.1f ", x, y)
+			lastX = x
+		}
+		pts += fmt.Sprintf("%.1f,270.0", lastX)
+		fills += "<polygon points=\"" + pts + "\" style=\"fill:" + color + ";opacity:0.18\"/>"
+	}
+	return strings.Replace(line, "<polyline", fills+"<polyline", 1)
 }
 
 /*

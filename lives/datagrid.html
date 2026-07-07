@@ -1,0 +1,32 @@
+<div class="dgrid" id="{{.UUID}}_grid">
+    <div class="dgrid-bar">
+        <input class="dgrid-filter" type="text" placeholder="Filter rows…" value="{{.FilterText}}"
+               onchange="send_event('{{.Id}}','Filter',this.value)"/>
+        <span class="dgrid-info">{{.PageInfo}}</span>
+        <select class="dgrid-size" onchange="send_event('{{.Id}}','Size',this.value)">
+            <option {{if eq .PageSize 10}}selected{{end}}>10</option>
+            <option {{if eq .PageSize 25}}selected{{end}}>25</option>
+            <option {{if eq .PageSize 50}}selected{{end}}>50</option>
+            <option {{if eq .PageSize 100}}selected{{end}}>100</option>
+        </select>
+        <button type="button" class="dgrid-nav" {{if not .HasPrev}}disabled{{end}}
+                onclick="send_event('{{.Id}}','Prev')">‹</button>
+        <button type="button" class="dgrid-nav" {{if not .HasNext}}disabled{{end}}
+                onclick="send_event('{{.Id}}','Next')">›</button>
+    </div>
+    <div class="df-table">
+        <table>
+            <thead><tr>
+                {{$id := .Id}}
+                {{range .Headers}}
+                <th class="dgrid-th" onclick="send_event('{{$id}}','Sort','{{.Index}}')">{{.Label}}</th>
+                {{end}}
+            </tr></thead>
+            <tbody>
+                {{range .PageRows}}
+                <tr>{{range .}}<td>{{.}}</td>{{end}}</tr>
+                {{end}}
+            </tbody>
+        </table>
+    </div>
+</div>

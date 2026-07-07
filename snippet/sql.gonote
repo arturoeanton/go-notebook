@@ -1,0 +1,22 @@
+// ReadSQL / SQLExec run compiled in the server: "sqlite" (no cgo) and
+// "postgres" drivers are built in.
+import "os"
+
+os.Remove("demo.db")
+SQLExec("sqlite", "demo.db", `CREATE TABLE sales (month TEXT, region TEXT, amount REAL)`)
+SQLExec("sqlite", "demo.db", `INSERT INTO sales VALUES
+	('Jan','North',120),('Jan','South',95),('Jan','East',88),
+	('Feb','North',132),('Feb','South',101),('Feb','East',97),
+	('Mar','North',151),('Mar','South',110),('Mar','East',105),
+	('Apr','North',142),('Apr','South',125),('Apr','East',118)`)
+
+df, err := ReadSQL("sqlite", "demo.db",
+	`SELECT region, SUM(amount) AS total, AVG(amount) AS avg
+	 FROM sales GROUP BY region ORDER BY total DESC`)
+if err != nil {
+	panic(err)
+}
+
+ShowHTML(
+	ShowDF(df) +
+		PieChart(ColS(df, "region"), ColF(df, "total"), "Sales share by region"))

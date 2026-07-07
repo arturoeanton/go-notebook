@@ -32,11 +32,13 @@ func emptyNote() Note {
 // Session holds the state of one browser connection: the open notebook and
 // its interpreter. Sessions are independent, so tabs no longer share state.
 type Session struct {
-	mu     sync.Mutex
-	note   Note
-	name   string // notebook name, without directory or extension
-	interp *fast.Interp
-	timer  *time.Timer
+	mu           sync.Mutex
+	note         Note
+	name         string // notebook name, without directory or extension
+	interp       *fast.Interp
+	timer        *time.Timer
+	page         *liveview.ComponentDriver[*liveview.Layout]
+	pendingGrids []*DataGrid
 }
 
 func newSession(name string, interp *fast.Interp) *Session {

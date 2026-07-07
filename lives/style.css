@@ -583,6 +583,82 @@ div.output-body { white-space: normal; }
 
 .html-result img { max-width: 100%; border-radius: 8px; }
 
+/* Interactive data grid */
+.dgrid-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+}
+
+.dgrid-filter {
+    flex: 1;
+    min-width: 140px;
+    max-width: 260px;
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: var(--bg-panel);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 12.5px;
+}
+
+.dgrid-filter:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.dgrid-info {
+    font-size: 11.5px;
+    color: var(--text-dim);
+    margin-left: auto;
+}
+
+.dgrid-size {
+    padding: 5px 6px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: var(--bg-panel);
+    color: var(--text);
+    font-size: 12px;
+}
+
+.dgrid-nav {
+    width: 26px;
+    height: 26px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: var(--bg-panel);
+    color: var(--text);
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+}
+
+.dgrid-nav:hover:not(:disabled) {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+}
+
+.dgrid-nav:disabled { opacity: 0.35; cursor: default; }
+
+.dgrid-th {
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+}
+
+.dgrid-th:hover { color: var(--accent-strong); }
+
+.dgrid-note {
+    font-size: 11px;
+    color: var(--text-dim);
+    padding: 6px 2px 0;
+}
+
 /* ---------------------------------------------------------------------------
    Markdown cells
 --------------------------------------------------------------------------- */
