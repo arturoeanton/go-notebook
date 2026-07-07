@@ -1,56 +1,42 @@
+//go:debug gotypesalias=0
+
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"flag"
-	"fmt"
-	"io"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
 
-	"github.com/arturoeanton/go-echo-live-view/components"
 	"github.com/arturoeanton/go-echo-live-view/liveview"
-	"github.com/arturoeanton/gocommons/utils"
+	"github.com/arturoeanton/go-notebook/bindings"
 	"github.com/cosmos72/gomacro/base"
 	"github.com/cosmos72/gomacro/base/inspect"
 	"github.com/cosmos72/gomacro/fast"
 	"github.com/cosmos72/gomacro/fast/debug"
-	"github.com/gomarkdown/markdown"
+	"github.com/cosmos72/gomacro/imports"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 )
 
-var (
-	note         Note = Note{Order: make([]string, 0), Items: make(map[string]Item)}
-	notebookFile      = "notebooks/default.gonote.json"
-)
-
-func MapToJSONFile(file string, data interface{}) {
-	jsonString, err := json.Marshal(data)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	utils.StringToFile(file, string(jsonString))
+func init() {
+	// Make the bundled libraries (go-pandas, go-dsl, go-xml) importable from
+	// notebook cells without network access or plugin compilation.
+	imports.Packages.Merge(bindings.Packages)
 }
 
-type Note struct {
-	Order []string `json:"order"`
-	Items map[string]Item
-}
-
-type Item struct {
-	MD    *TextMD `json:"md,omitempty"`
-	Shell *Shell  `json:"shell,omitempty"`
-}
-
+// LinkMenu is a toolbar action button.
 type LinkMenu struct {
-	Driver  *liveview.ComponentDriver `json:"-"`
-	Caption string                    `json:"caption"`
-	Id      string                    `json:"id"`
+	Driver  *liveview.ComponentDriver[*LinkMenu] `json:"-"`
+	Caption string                               `json:"caption"`
+	Class   string                               `json:"class"`
+	Title   string                               `json:"title"`
+	Id      string                               `json:"id"`
+}
+
+func (t *LinkMenu) GetDriver() liveview.LiveDriver {
+	return t.Driver
 }
 
 func (t *LinkMenu) Start() {
@@ -58,289 +44,167 @@ func (t *LinkMenu) Start() {
 }
 
 func (t *LinkMenu) GetTemplate() string {
-	return `<a  href="#" onClick="send_event('{{.Id}}','Click')" >{{.Caption}}</a>`
+	return `<button type="button" class="btn {{.Class}}" title="{{.Title}}" onclick="send_event('{{.Id}}','Click')">{{.Caption}}</button>`
 }
 
-type TextMD struct {
-	Driver      *liveview.ComponentDriver `json:"-"`
-	UUID        string                    `json:"uuid"`
-	Id          string                    `json:"id"`
-	CodeMD      string                    `json:"code_md"`
-	Result      string                    `json:"result"`
-	CaptionPlay string                    `json:"caption_play"`
-}
+func newInterpreter() *fast.Interp {
+	interp := fast.New()
+	interp.SetDebugger(&debug.Debugger{})
+	interp.SetInspector(&inspect.Inspector{})
 
-func (t *TextMD) GetTemplate() string {
-	te, _ := utils.FileToString(`lives/text_md.html`)
-	return te
-}
+	g := &interp.Comp.Globals
+	g.ParserMode = 0
+	g.Options |= base.OptDebugger |
+		base.OptCtrlCEnterDebugger |
+		base.OptKeepUntyped |
+		base.OptTrapPanic |
+		base.OptModuleImport
+	g.Options &^= base.OptShowPrompt | base.OptShowEval | base.OptShowEvalType
 
-func (t *TextMD) Start() {
-	t.UUID = uuid.New().String()
-	t.Driver.Commit()
-	if !utils.ContainsString(note.Order, t.Id) {
-		note.Order = append(note.Order, t.Id)
-	}
+	g.Imports, g.Declarations, g.Statements = nil, nil, nil
 
-	note.Items[t.Id] = Item{MD: t}
-	MapToJSONFile(notebookFile, note)
-}
-
-func (t *TextMD) Click(data interface{}) {
-	if t.Result != "" {
-		t.Result = ""
-		t.CaptionPlay = "Print"
-		t.Driver.Commit()
-		note.Items[t.Id] = Item{MD: t}
-		MapToJSONFile(notebookFile, note)
-		return
-	}
-	t.CaptionPlay = "Edit"
-	t.CodeMD = t.Driver.GetValue(t.UUID + "_text_md")
-	md := []byte(t.CodeMD)
-	t.Result = string(markdown.ToHTML(md, nil, nil))
-	t.Driver.Commit()
-	note.Items[t.Id] = Item{MD: t}
-	MapToJSONFile(notebookFile, note)
-}
-
-func (t *TextMD) Remove(data interface{}) {
-	delete(note.Items, t.Id)
-	t.Driver.Remove(t.UUID + "_div_md")
-	MapToJSONFile(notebookFile, note)
-}
-
-type Shell struct {
-	Driver      *liveview.ComponentDriver `json:"-"`
-	Interpreter *fast.Interp              `json:"-"`
-	Debug       bool                      `json:"debug"`
-	UUID        string                    `json:"uuid"`
-	Id          string                    `json:"id"`
-	Code        string                    `json:"code"`
-	CaptionPlay string                    `json:"caption_play"`
-	Result      string                    `json:"-"`
-	Out         string                    `json:"-"`
-	Err         string                    `json:"-"`
-}
-
-func (t *Shell) Start() {
-	t.Out = ""
-	t.UUID = uuid.New().String()
-	t.Driver.Commit()
-	if !utils.ContainsString(note.Order, t.Id) {
-		note.Order = append(note.Order, t.Id)
-	}
-	note.Items[t.Id] = Item{Shell: t}
-	MapToJSONFile(notebookFile, note)
-}
-
-func (t *Shell) GetTemplate() string {
-	te, _ := utils.FileToString("lives/shell.html")
-	return te
-}
-
-func (t *Shell) Remove(data interface{}) {
-	delete(note.Items, t.Id)
-	t.Driver.Remove(t.UUID + "_div_code")
-	MapToJSONFile(notebookFile, note)
-}
-func (t *Shell) Click(data interface{}) {
-	t.Driver.SetStyle("spinner-overlay", "display: block")
-	t.Driver.SetStyle("content", "pointer-events:none")
-
-	old := os.Stdout // keep backup of the real stdout
-	oldErr := os.Stderr
-	r, w, _ := os.Pipe()
-
-	os.Stderr = w
-	os.Stdout = w
-	log.SetOutput(w)
-
-	t.Code = t.Driver.GetValue(t.UUID + "_code")
-	t.Result = ""
-	defer func() {
-		t.Driver.SetStyle("content", "pointer-events:auto")
-		t.Driver.SetStyle("spinner-overlay", "display: none")
-	}()
-	defer func() {
-		if r := recover(); r != nil {
-			t.Result += "Recovered in (" + t.Code + ")" + fmt.Sprint(r)
-			t.CaptionPlay = "(E)Play"
-		}
-
-		outC := make(chan string)
-		go func() {
-			var buf bytes.Buffer
-			io.Copy(&buf, r)
-			outC <- buf.String()
-		}()
-		w.Close()
-		os.Stdout = old
-		os.Stderr = oldErr
-		log.SetOutput(os.Stderr)
-		t.Out = <-outC
-
-		t.Driver.Commit()
-		note.Items[t.Id] = Item{Shell: t}
-		MapToJSONFile(notebookFile, note)
-	}()
-
-	values, types := t.Interpreter.Eval(t.Code)
-	for i, value := range values {
-		value := fmt.Sprint(value.ReflectValue())
-
-		if !strings.HasPrefix(value, "<div>") {
-			value += "|" + fmt.Sprint(types[i])
-			value = "<textarea onfocus='autosize(this)'' class='result'  readonly='true'>" + value + "</textarea>"
-		}
-		t.Result += value
-
-		t.Result += "\n"
-	}
-	t.CaptionPlay = "Replay"
-
+	defaultCode, _ := liveview.FileToString("default.gonote")
+	interp.Eval(defaultCode)
+	return interp
 }
 
 func main() {
-
 	filename := flag.String("f", "notebooks/default.gonote.json", "GoNotebookFile")
 	port := flag.String("p", ":1323", "port")
 	flag.Parse()
 	notebookFile = *filename
 
 	e := echo.New()
+	e.HideBanner = true
 	e.Static("/static", "static")
-	css, _ := utils.FileToString("lives/style.css")
+	css, _ := liveview.FileToString("lives/style.css")
 	home := liveview.PageControl{
-		Title:     "Go-Notebook",
-		Lang:      "en",
-		HeadCode:  "lives/head.html",
-		AfterCode: "lives/after.html",
-		Css:       css,
-		Path:      "/",
-		Router:    e,
+		Title:    "Go Notebook",
+		Lang:     "en",
+		HeadCode: "lives/head.html",
+		Css:      css,
+		Path:     "/",
+		Router:   e,
 	}
 
-	interpSetup := fast.New()
-	defaultCode, _ := utils.FileToString("default.gonote")
-	interpSetup.Eval(defaultCode)
+	// Warm up the interpreter machinery once at startup.
+	newInterpreter()
 
-	home.Register(func() *liveview.ComponentDriver {
-		interp := fast.New()
-		interp.SetDebugger(&debug.Debugger{})
-		interp.SetInspector(&inspect.Inspector{})
+	home.Register(func() liveview.LiveDriver {
+		interp := newInterpreter()
 
-		g := &interp.Comp.Globals
-		g.ParserMode = 0 // defaults
-		g.Options |= base.OptDebugger |
-			base.OptCtrlCEnterDebugger |
-			base.OptKeepUntyped |
-			base.OptTrapPanic |
-			base.OptShowPrompt |
-			base.OptShowEval |
-			base.OptShowEvalType |
-			base.OptModuleImport |
-			base.OptShowCompile |
-			base.OptShowTime
+		page := liveview.NewLayout("notebook", "lives/layout.html")
 
-		g.Options &^= base.OptShowPrompt | base.OptShowEval | base.OptShowEvalType // cleared by default, overridden by -s, -v and -vv
-
-		g.Imports, g.Declarations, g.Statements = nil, nil, nil
-
-		defaultCode, _ := utils.FileToString("default.gonote")
-		interp.Eval(defaultCode)
-
-		page := components.NewLayout("notebook", "lives/layout.html")
-
-		link_add_code := liveview.NewDriver("link_add_code", &LinkMenu{Caption: "+ Code"})
-		link_add_code.Events["Click"] = func(data interface{}) {
+		linkAddCode := liveview.NewDriver("link_add_code", &LinkMenu{
+			Caption: `<span class="btn-ico">+</span> Code`,
+			Title:   "Add a Go code cell",
+		})
+		linkAddCode.Events["Click"] = func(c *LinkMenu, data interface{}) {
 			idShell := "shell_" + uuid.NewString()
 			code := ""
 
-			if snippetName, ok := data.(string); ok {
-				if utils.Exists("snippet/" + snippetName + ".gonote") {
-					code, _ = utils.FileToString("snippet/" + snippetName + ".gonote")
+			if snippetName, ok := data.(string); ok && snippetName != "" {
+				if liveview.Exists("snippet/" + snippetName + ".gonote") {
+					code, _ = liveview.FileToString("snippet/" + snippetName + ".gonote")
 				}
 			}
 
 			newShell := &Shell{Debug: true, Interpreter: interp, CaptionPlay: "Play", Code: code}
-			addShell(idShell, page, link_add_code, newShell)
-		}
-		link_add_md := liveview.NewDriver("link_add_md", &LinkMenu{Caption: "+ Text"})
-		link_add_md.Events["Click"] = func(data interface{}) {
-			idText := "text_" + uuid.NewString()
-			addMD(idText, page, link_add_md, &TextMD{CaptionPlay: "Print"})
+			addShell(idShell, page, newShell)
 		}
 
-		link_reload := liveview.NewDriver("link_reload", &LinkMenu{Caption: "Reload"})
-		link_reload.Events["Click"] = func(data interface{}) {
+		linkAddMD := liveview.NewDriver("link_add_md", &LinkMenu{
+			Caption: `<span class="btn-ico">+</span> Text`,
+			Title:   "Add a markdown cell",
+		})
+		linkAddMD.Events["Click"] = func(c *LinkMenu, data interface{}) {
+			idText := "text_" + uuid.NewString()
+			addMD(idText, page, &TextMD{CaptionPlay: "Print"})
+		}
+
+		linkReload := liveview.NewDriver("link_reload", &LinkMenu{
+			Caption: `<span class="btn-ico">⟳</span> Reload`,
+			Title:   "Reload the current notebook",
+		})
+		linkReload.Events["Click"] = func(c *LinkMenu, data interface{}) {
 			note = Note{Order: make([]string, 0), Items: make(map[string]Item)}
-			link_reload.SetHTML("main_div", "")
-			defaultCode, _ := utils.FileToString("default.gonote")
+			linkReload.FillValueById("main_div", "")
+			defaultCode, _ := liveview.FileToString("default.gonote")
 			interp.Eval(defaultCode)
-			if _, ok := data.(string); ok {
-				notebookFile = "notebooks/" + fmt.Sprint(data) + ".gonote.json"
+			if name, ok := data.(string); ok && name != "" {
+				notebookFile = "notebooks/" + name + ".gonote.json"
 			}
-			if !utils.Exists(notebookFile) {
-				utils.StringToFile(notebookFile, `{"order":[], "Items":{}}`)
+			if !liveview.Exists(notebookFile) {
+				liveview.StringToFile(notebookFile, `{"order":[], "Items":{}}`)
 			}
-			jsonString, _ := utils.FileToString(notebookFile)
+			jsonString, _ := liveview.FileToString(notebookFile)
 			json.Unmarshal([]byte(jsonString), &note)
 			for _, key := range note.Order {
 				item := note.Items[key]
 				if item.MD != nil {
-					addMD(key, page, link_reload, item.MD)
+					addMD(key, page, item.MD)
 				}
 				if item.Shell != nil {
 					item.Shell.Interpreter = interp
 					item.Shell.CaptionPlay = "Play"
-					addShell(key, page, link_reload, item.Shell)
+					addShell(key, page, item.Shell)
 				}
 			}
 
-			options := "<option></option>"
-
-			root := "snippet/"
-			filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
-				if strings.HasSuffix(info.Name(), ".gonote") {
-					options += "<option>" + strings.Split(info.Name(), ".")[0] + "</option>"
+			options := "<option value=\"\">Insert snippet…</option>"
+			filepath.Walk("snippet/", func(path string, info os.FileInfo, err error) error {
+				if err == nil && strings.HasSuffix(info.Name(), ".gonote") {
+					name := strings.Split(info.Name(), ".")[0]
+					options += "<option>" + name + "</option>"
 				}
-				link_reload.SetHTML("snippet", options)
 				return nil
 			})
+			linkReload.FillValueById("snippet", options)
 
-			optionsNotebook := "<option></option>"
-
+			optionsNotebook := ""
 			filepath.Walk("notebooks/", func(path string, info os.FileInfo, err error) error {
-				if strings.HasSuffix(info.Name(), ".gonote.json") {
-					optionsNotebook += "<option>" + strings.Split(info.Name(), ".")[0] + "</option>"
+				if err == nil && strings.HasSuffix(info.Name(), ".gonote.json") {
+					name := strings.TrimSuffix(info.Name(), ".gonote.json")
+					if name != "" {
+						optionsNotebook += "<option>" + name + "</option>"
+					}
 				}
-				link_reload.SetHTML("notebooks", optionsNotebook)
 				return nil
 			})
+			linkReload.FillValueById("notebooks", optionsNotebook)
 
-			link_reload.SetValue("notebook", strings.Split(strings.Split(notebookFile, ".")[0], "/")[1])
-
+			notebookName := strings.TrimSuffix(filepath.Base(notebookFile), ".gonote.json")
+			linkReload.FillValueById("notebook_name", notebookName)
+			linkReload.EvalScript("var nb=document.getElementById('notebook'); if(nb){nb.value=" + jsString(notebookName) + "}")
 		}
 
-		return page.Mount(link_add_code).Mount(link_add_md).Mount(link_reload)
+		return page.Mount(linkAddCode.Component).
+			Mount(linkAddMD.Component).
+			Mount(linkReload.Component)
 	})
 
 	e.Logger.Fatal(e.Start(*port))
 }
 
-func addShell(idShell string, page, driver *liveview.ComponentDriver, newShell *Shell) {
-
-	driver.AddNode("main_div", `<div id="`+idShell+`"><div>`)
-
-	shell := liveview.NewDriver(idShell, newShell)
-	page.MountWithStart(idShell, shell)
-	driver.EvalScript("window.scrollBy(0, document.body.offsetHeight);")
+func jsString(s string) string {
+	b, _ := json.Marshal(s)
+	return string(b)
 }
 
-func addMD(idText string, page, driver *liveview.ComponentDriver, newTextMD *TextMD) {
-	driver.AddNode("main_div", `<div id="`+idText+`"><div>`)
+func addShell(idShell string, page *liveview.ComponentDriver[*liveview.Layout], newShell *Shell) {
+	page.AddNode("main_div", `<div id="`+idShell+`" class="cell-slot"></div>`)
+	shell := liveview.NewDriver(idShell, newShell)
+	page.MountWithStart(idShell, shell)
+	scrollToCell(page, idShell)
+}
+
+func addMD(idText string, page *liveview.ComponentDriver[*liveview.Layout], newTextMD *TextMD) {
+	page.AddNode("main_div", `<div id="`+idText+`" class="cell-slot"></div>`)
 	textMD := liveview.NewDriver(idText, newTextMD)
 	page.MountWithStart(idText, textMD)
-	driver.EvalScript("window.scrollBy(0, document.body.offsetHeight);")
+	scrollToCell(page, idText)
+}
+
+func scrollToCell(page *liveview.ComponentDriver[*liveview.Layout], id string) {
+	page.EvalScript("var el=document.getElementById(" + jsString(id) + "); if(el){el.scrollIntoView({behavior:'smooth',block:'end'})}")
 }
