@@ -102,6 +102,18 @@ func (t *Shell) Click(data interface{}) {
 	t.Driver.FillValueById(t.UUID+"_status",
 		`<span class="status-dot"></span> Running… importing a package for the first time can take a minute while it compiles.`)
 
+	t.Code = t.Driver.GetElementById(t.UUID + "_code")
+	t.Result, t.Out, t.Err = evalCell(t.Interpreter, t.Code)
+
+	t.Driver.Commit()
+	t.Session.mountPendingGrids()
+	t.Session.refreshVars()
+	t.Session.touch(t.Id, Item{Shell: t})
+}
+
+// evalCell evaluates Go code in the interpreter, capturing stdout/stderr and
+// panics. It is shared by the interactive cells and the headless runner.
+func evalCell(interp *fast.Interp, code string) (result, out, errMsg string) {
 	old := os.Stdout // keep backup of the real stdout
 	oldErr := os.Stderr
 	r, w, _ := os.Pipe()
@@ -110,12 +122,9 @@ func (t *Shell) Click(data interface{}) {
 	os.Stdout = w
 	log.SetOutput(w)
 
-	t.Code = t.Driver.GetElementById(t.UUID + "_code")
-	t.Result = ""
-	t.Err = ""
 	defer func() {
 		if rec := recover(); rec != nil {
-			t.Err = html.EscapeString(fmt.Sprint(rec))
+			errMsg = html.EscapeString(fmt.Sprint(rec))
 		}
 
 		outC := make(chan string)
@@ -128,22 +137,19 @@ func (t *Shell) Click(data interface{}) {
 		os.Stdout = old
 		os.Stderr = oldErr
 		log.SetOutput(os.Stderr)
-		t.Out = html.EscapeString(<-outC)
-
-		t.Driver.Commit()
-		t.Session.mountPendingGrids()
-		t.Session.touch(t.Id, Item{Shell: t})
+		out = html.EscapeString(<-outC)
 	}()
 
-	values, types := t.Interpreter.Eval(t.Code)
+	values, types := interp.Eval(code)
 	for i, value := range values {
 		v := fmt.Sprint(value.ReflectValue())
 		if strings.HasPrefix(strings.TrimSpace(v), "<div") {
-			t.Result += v
+			result += v
 			continue
 		}
-		t.Result += "<div class=\"res-item\"><pre class=\"res-value\">" +
+		result += "<div class=\"res-item\"><pre class=\"res-value\">" +
 			html.EscapeString(v) + "</pre><span class=\"res-type\">" +
 			html.EscapeString(fmt.Sprint(types[i])) + "</span></div>"
 	}
+	return result, out, errMsg
 }

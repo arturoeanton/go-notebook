@@ -20,6 +20,8 @@ You can add code and text depends your needs.
 * Per-tab sessions: each browser tab gets its own notebook and interpreter.
 * Cell outputs are persisted with the notebook and survive reloads; saving is automatic (debounced).
 * Export any notebook as a standalone HTML page (`Export` button or `/export/<name>`).
+* Headless, parameterized runs: `go-notebook run <name> -p key=value -o report.html` executes every cell and writes the HTML report — schedule it with cron for automated reporting.
+* Variables panel (`Vars` button): live view of the interpreter's variables with name, type and value, refreshed after every cell run.
 * Markdown cells rendered server-side.
 * Bundled libraries, importable from any cell with **no network access or plugin compilation** (precompiled gomacro bindings in `bindings/`):
   * [go-pandas](https://github.com/arturoeanton/go-pandas) — DataFrames for Go (`import pd "github.com/arturoeanton/go-pandas"`)

@@ -26,9 +26,19 @@
                     <option value="">Insert snippet…</option>
                 </select>
                 <button type="button" class="btn" title="Export this notebook as a standalone HTML page" onclick="nbExport()">Export</button>
+                <button type="button" class="btn" title="Show interpreter variables" onclick="nbToggleVars()">Vars</button>
                 <button type="button" class="btn btn-icon" id="theme_toggle" title="Toggle dark mode" onclick="nbToggleTheme()">◐</button>
             </nav>
         </header>
         <main id="main_div" class="cells"></main>
     </div>
+    <aside class="vars-panel vars-panel--hidden" id="vars_panel">
+        <div class="vars-head">
+            <span class="sidebar-title">Variables</span>
+            <button type="button" class="ghost-btn" onclick="nbToggleVars()">✕</button>
+        </div>
+        <div id="vars_body" class="vars-body">
+            <div class="vars-empty">No variables yet — run a cell.</div>
+        </div>
+    </aside>
 </div>

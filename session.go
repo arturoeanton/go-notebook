@@ -39,6 +39,7 @@ type Session struct {
 	timer        *time.Timer
 	page         *liveview.ComponentDriver[*liveview.Layout]
 	pendingGrids []*DataGrid
+	varsBaseline map[string]bool
 }
 
 func newSession(name string, interp *fast.Interp) *Session {

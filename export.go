@@ -26,7 +26,12 @@ func exportHandler(c echo.Context) error {
 	if err := json.Unmarshal(data, &n); err != nil {
 		return c.String(http.StatusInternalServerError, "invalid notebook file")
 	}
+	return c.HTML(http.StatusOK, renderExport(name, n))
+}
 
+// renderExport builds the standalone HTML report for a notebook. It is used
+// by both the /export route and the headless runner.
+func renderExport(name string, n Note) string {
 	css, _ := liveview.FileToString("lives/style.css")
 	var sb strings.Builder
 	sb.WriteString("<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\"/>")
@@ -60,7 +65,7 @@ func exportHandler(c echo.Context) error {
 		}
 	}
 	sb.WriteString("</div></body></html>")
-	return c.HTML(http.StatusOK, sb.String())
+	return sb.String()
 }
 
 const exportCSS = `

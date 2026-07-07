@@ -161,6 +161,73 @@ body {
 
 .sidebar-toggle { margin-right: 2px; }
 
+/* Variables panel */
+.vars-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    z-index: 150;
+    width: 340px;
+    height: 100vh;
+    background: var(--bg-panel);
+    border-left: 1px solid var(--border);
+    box-shadow: var(--shadow-hover);
+    display: flex;
+    flex-direction: column;
+}
+
+.vars-panel--hidden { display: none; }
+
+.vars-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px 8px;
+    border-bottom: 1px solid var(--border);
+}
+
+.vars-body {
+    flex: 1;
+    overflow: auto;
+    padding: 8px 10px;
+}
+
+.vars-empty {
+    color: var(--text-dim);
+    font-size: 12.5px;
+    padding: 8px 4px;
+}
+
+.vars-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+
+.vars-table td {
+    padding: 5px 6px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+    word-break: break-word;
+}
+
+.vars-name {
+    font-family: var(--mono);
+    color: var(--accent-strong);
+    white-space: nowrap;
+}
+
+.vars-type {
+    font-family: var(--mono);
+    color: var(--text-dim);
+    font-size: 11px;
+    max-width: 90px;
+}
+
+.vars-value {
+    font-family: var(--mono);
+}
+
 /* ---------------------------------------------------------------------------
    Top bar
 --------------------------------------------------------------------------- */

@@ -186,6 +186,69 @@ ScatterChart(xs, ys, "s") + Histogram(ys, 3, "h") +
 	}
 }
 
+func TestDSLRulesSnippet(t *testing.T) {
+	interp := newTestInterpreter(t)
+	out := evalSnippet(t, interp, "snippet/dsl-rules.gonote")
+	if !strings.Contains(out, "<table>") || !strings.Contains(out, "<svg") {
+		t.Fatalf("expected table and chart, got: %q", out[:200])
+	}
+	// amount 145 and 180 get 15%% off; 120 and 99 stay
+	if !strings.Contains(out, "123.25") || !strings.Contains(out, "153") {
+		t.Fatalf("expected discounted amounts in output, got: %q", out)
+	}
+	if !strings.Contains(out, "120") || !strings.Contains(out, "99") {
+		t.Fatalf("expected untouched amounts in output, got: %q", out)
+	}
+}
+
+func TestListVars(t *testing.T) {
+	interp := newTestInterpreter(t)
+	baseline := baselineBinds(interp)
+	interp.Eval(`x := 42
+mensaje := "hola"`)
+	vars := listVars(interp, baseline)
+	found := map[string]string{}
+	for _, v := range vars {
+		found[v.Name] = v.Value
+	}
+	if found["x"] != "42" {
+		t.Fatalf("expected x=42 in vars, got %v", found)
+	}
+	if found["mensaje"] != "hola" {
+		t.Fatalf("expected mensaje=hola in vars, got %v", found)
+	}
+	if _, ok := found["ShowDF"]; ok {
+		t.Fatal("preamble helpers should be hidden by the baseline")
+	}
+}
+
+func TestRunHeadless(t *testing.T) {
+	nb := `{"order":["text_t","shell_t"],"Items":{` +
+		`"text_t":{"md":{"uuid":"m","id":"text_t","code_md":"# Reporte","result":"","caption_play":"Edit"}},` +
+		`"shell_t":{"shell":{"debug":true,"uuid":"s","id":"shell_t","code":"import \"fmt\"\nfmt.Println(\"saludo:\", quien)\n2+2","caption_play":"Play"}}}}`
+	if err := os.WriteFile(notebookPath("__test__"), []byte(nb), 0644); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(notebookPath("__test__"))
+	outFile := filepath.Join(t.TempDir(), "report.html")
+
+	code := runHeadless([]string{"__test__", "-p", "quien=mundo", "-o", outFile})
+	if code != 0 {
+		t.Fatalf("expected exit 0, got %d", code)
+	}
+	html, err := os.ReadFile(outFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := string(html)
+	if !strings.Contains(s, "saludo: mundo") {
+		t.Fatalf("report should contain parameterized output, got: %.300s", s)
+	}
+	if !strings.Contains(s, "Reporte") || !strings.Contains(s, "4") {
+		t.Fatal("report should contain rendered markdown and the cell result")
+	}
+}
+
 func TestSanitizeNotebookName(t *testing.T) {
 	cases := map[string]string{
 		"default":                 "default",

@@ -1,0 +1,59 @@
+// A business-rules DSL applied over a DataFrame: the rule is plain text,
+// parsed with go-dsl, and evaluated row by row with go-pandas.
+import (
+	"strconv"
+
+	"github.com/arturoeanton/go-dsl/pkg/dslbuilder"
+	pd "github.com/arturoeanton/go-pandas"
+)
+
+rules := dslbuilder.New("Rules")
+rules.Token("DISCOUNT", "discount")
+rules.Token("WHEN", "when")
+rules.Token("GT", ">")
+rules.Token("NUMBER", "[0-9]+(\\.[0-9]+)?")
+rules.Token("IDENT", "[a-z]+")
+rules.Rule("rule", []string{"DISCOUNT", "NUMBER", "WHEN", "IDENT", "GT", "NUMBER"}, "mk")
+rules.Action("mk", func(args []interface{}) (interface{}, error) {
+	pctS := args[1].(string)
+	colS := args[3].(string)
+	limS := args[5].(string)
+	pct, _ := strconv.ParseFloat(pctS, 64)
+	lim, _ := strconv.ParseFloat(limS, 64)
+	return []float64{pct, lim}, nil
+})
+
+// The rule a business user would write:
+res, err := rules.Parse("discount 15 when amount > 130")
+if err != nil {
+	panic(err)
+}
+rule := res.GetOutput().([]float64)
+pct := rule[0]
+lim := rule[1]
+
+df, err := pd.DataFrameFromRecords([]map[string]any{
+	{"customer": "Ana", "amount": 120.0},
+	{"customer": "Luis", "amount": 145.0},
+	{"customer": "Marta", "amount": 180.0},
+	{"customer": "Juan", "amount": 99.0},
+}, pd.WithColumnOrder("customer", "amount"))
+if err != nil {
+	panic(err)
+}
+
+out, err := df.AssignFunc("final", func(row map[string]any) any {
+	raw := row["amount"]
+	amount := toFloat(raw)
+	if amount > lim {
+		return amount * (1 - pct/100)
+	}
+	return amount
+})
+if err != nil {
+	panic(err)
+}
+
+ShowHTML(
+	ShowDF(out) +
+		BarChart(ColS(out, "customer"), ColF(out, "final"), "Final amount after rule"))

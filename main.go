@@ -69,6 +69,10 @@ func newInterpreter() *fast.Interp {
 }
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "run" {
+		os.Exit(runHeadless(os.Args[2:]))
+	}
+
 	filename := flag.String("f", "default", "default notebook name")
 	port := flag.String("p", ":1323", "port")
 	flag.Parse()
@@ -98,6 +102,7 @@ func main() {
 		interp := newInterpreter()
 		session := newSession(defaultNotebook, interp)
 		declareHostFuncs(interp, session)
+		session.varsBaseline = baselineBinds(interp)
 
 		page := liveview.NewLayout("notebook", "lives/layout.html")
 		session.page = page
@@ -189,6 +194,7 @@ func main() {
 
 			linkReload.FillValueById("notebook_name", name)
 			refreshSidebar()
+			session.refreshVars()
 			// name is sanitized: safe to embed
 			linkReload.EvalScript("localStorage.setItem('gonotebook-nb', '" + name + "'); window.scrollTo({top:0})")
 		}

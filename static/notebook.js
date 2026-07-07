@@ -74,6 +74,13 @@
         }
     };
 
+    window.nbToggleVars = function () {
+        var p = document.getElementById('vars_panel');
+        if (p) {
+            p.classList.toggle('vars-panel--hidden');
+        }
+    };
+
     applyTheme(currentTheme());
 
     // ---------------------------------------------------------------- editors
