@@ -1,27 +1,36 @@
-<div id="{{.UUID}}_div_code" style="background: white;">
-    <br>
-    <fieldset style="border-radius: 5px">
-        <textarea  oninput="autosize(this)" onfocus="autosize(this)" id="{{.UUID}}_code" style="width: 100%; height: 50px; padding: 5px; background: darkseagreen;" >{{.Code}}</textarea>
-        {{if ne .Result "" }} 
-        <fieldset style="background: aliceblue;">
-            <legend>Result</legend>
-            {{.Result}}
-        </fieldset>
+<div id="{{.UUID}}_div_code" class="cell cell-code">
+    <div class="cell-side">
+        <button type="button" class="run-btn" id="{{.UUID}}_play" title="Run cell (Shift+Enter)"
+                onclick="send_event('{{.Id}}', 'Click')">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5v11l9-5.5z"/></svg>
+        </button>
+    </div>
+    <div class="cell-main">
+        <div class="cell-editor">
+            <textarea class="code-editor" data-cell="{{.Id}}" data-mode="text/x-go"
+                      id="{{.UUID}}_code" spellcheck="false">{{.Code}}</textarea>
+        </div>
+        {{if ne .Err "" }}
+        <div class="cell-output cell-error">
+            <span class="output-label">Error</span>
+            <pre class="output-body">{{.Err}}</pre>
+        </div>
         {{end}}
-        {{if ne .Out "" }} 
-        <fieldset style="background: aliceblue;">
-            <legend>Output</legend>
-            {{.Out}} 
-        </fieldset>
+        {{if ne .Result "" }}
+        <div class="cell-output cell-result">
+            <span class="output-label">Result</span>
+            <div class="output-body">{{.Result}}</div>
+        </div>
         {{end}}
-        {{if ne .Err "" }} 
-        <fieldset>
-            <legend>Stderr</legend>
-            {{.Err}} 
-        </fieldset>
+        {{if ne .Out "" }}
+        <div class="cell-output cell-stdout">
+            <span class="output-label">Output</span>
+            <pre class="output-body">{{.Out}}</pre>
+        </div>
         {{end}}
-        <hr/>
-        <button id="{{.UUID}}_play" onclick="send_event('{{.Id}}', 'Click')" >{{.CaptionPlay}}</button>
-        <button id="{{.UUID}}_remove" onclick="send_event('{{.Id}}', 'Remove', '{{.UUID}}')" >Remove</button>
-    </fieldset>
+    </div>
+    <div class="cell-actions">
+        <button type="button" class="ghost-btn" id="{{.UUID}}_remove" title="Delete cell"
+                onclick="send_event('{{.Id}}', 'Remove', '{{.UUID}}')">✕</button>
+    </div>
 </div>

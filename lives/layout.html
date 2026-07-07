@@ -1,27 +1,24 @@
-
-<div id="spinner-overlay" class="spinner-overlay">  
-    <div class="spinner"></div>
-</div>
-
-<div class="navbar">
-    {{ mount "link_add_code"}}
-    {{mount "link_add_md"}}
-    {{mount "link_reload"}}
-
-    <div id="navbar-right">
-        <p class="snippet">Snippet:
-            <select id="snippet" onchange="send_event('link_add_code','Click', this.value)">
-                <option></option>
-            </select>
-        </p>
-
-        <p class="snippet">Notebook:
-            <input list="notebooks" id="notebook" onchange="send_event('link_reload','Click',this.value)">
-            </input>
-            <datalist id="notebooks">
-            </datalist>
-        </p>
+<header class="topbar">
+    <div class="brand">
+        <svg class="brand-logo" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <rect x="2" y="3" width="20" height="18" rx="4"/>
+            <path d="M7 9l3 3-3 3"/>
+            <line x1="12" y1="15" x2="17" y2="15"/>
+        </svg>
+        <span class="brand-name">Go Notebook</span>
+        <span class="notebook-chip" id="notebook_name"></span>
     </div>
-</div>
-<div id="main_div">
-</div>
+    <nav class="toolbar">
+        {{ mount "link_add_code"}}
+        {{mount "link_add_md"}}
+        {{mount "link_reload"}}
+        <select id="snippet" class="select" onchange="send_event('link_add_code','Click', this.value); this.value=''">
+            <option value="">Insert snippet…</option>
+        </select>
+        <input list="notebooks" id="notebook" class="select notebook-input" placeholder="Notebook…"
+               onchange="send_event('link_reload','Click',this.value)"/>
+        <datalist id="notebooks"></datalist>
+        <button type="button" class="btn btn-icon" id="theme_toggle" title="Toggle dark mode" onclick="nbToggleTheme()">◐</button>
+    </nav>
+</header>
+<main id="main_div" class="cells"></main>
