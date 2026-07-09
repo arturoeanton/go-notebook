@@ -1,6 +1,8 @@
 
 # Go-Notebook
 
+![Go-Notebook](https://raw.githubusercontent.com/arturoeanton/go-notebook/main/gonote1.png)
+
 Go-Notebook is an app that was developed using go-echo-live-view framework, developed also by us.
 
 GitHub repository is [here](https://github.com/arturoeanton/go-echo-live-view).
@@ -88,12 +90,34 @@ http://localhost:1323/
 
 ## Run on docker
 
+The image is published on Docker Hub as
+[`arturoeanton/go-notebook`](https://hub.docker.com/r/arturoeanton/go-notebook)
+with the tags `latest` and `v2` (current stable). Inside the container the
+server listens on `0.0.0.0:1323` and runs as a non-root user.
+
 ```
-docker pull arturoeanton/go-notebook
-docker run --rm -p 1323:1323 arturoeanton/go-notebook
+docker pull arturoeanton/go-notebook:v2
+docker run --rm -p 1323:1323 arturoeanton/go-notebook:v2
 ```
+
+Run it in the background instead:
+
+```
+docker run -d --name gonote -p 1323:1323 arturoeanton/go-notebook:v2
+docker logs -f gonote   # follow the logs
+docker stop gonote      # stop it
+```
+
 ### Go to
 http://localhost:1323/
+
+### Build the image yourself
+
+```
+docker build . -t arturoeanton/go-notebook:v2 -t arturoeanton/go-notebook:latest
+docker push arturoeanton/go-notebook:v2
+docker push arturoeanton/go-notebook:latest
+```
 
 
 ### Change notebooks and snippet folders
@@ -101,13 +125,13 @@ http://localhost:1323/
 #### Docker
 
 ```
-docker run --rm -p 1323:1323 --volume ./notebooks:/app/notebooks --volume ./snippet:/app/snippet arturoeanton/go-notebook
+docker run --rm -p 1323:1323 --volume ./notebooks:/app/notebooks --volume ./snippet:/app/snippet arturoeanton/go-notebook:v2
 ```
 
 #### Podman
 
 ```
-podman run   --rm -p 1323:1323 --volume ./notebooks:/app/notebooks:Z --volume ./snippet:/app/snippet:Z arturoeanton/go-notebook
+podman run   --rm -p 1323:1323 --volume ./notebooks:/app/notebooks:Z --volume ./snippet:/app/snippet:Z arturoeanton/go-notebook:v2
 ```
 
 ## Regenerating the bundled bindings
@@ -124,11 +148,21 @@ echo 'import _3 "github.com/arturoeanton/go-pandas"' | GODEBUG=gotypesalias=0 go
 then copy the generated file from `$GOPATH/src/github.com/cosmos72/gomacro/imports/thirdparty/`
 into `bindings/`, changing the package clause to `bindings`.
 
-## DEMO
+## Screenshots
 
-![alt text](https://raw.githubusercontent.com/arturoeanton/go-notebook/main/gonote1.gif)
+The default notebook, with markdown cells, Go code with syntax highlighting
+and Jupyter-style execution counters:
 
-![alt text](https://raw.githubusercontent.com/arturoeanton/go-notebook/main/gonote2.gif)
+![Main view](https://raw.githubusercontent.com/arturoeanton/go-notebook/main/gonote1.png)
+
+Native SVG charts, in dark mode:
+
+![Charts in dark mode](https://raw.githubusercontent.com/arturoeanton/go-notebook/main/gonote2.png)
+
+The interactive server-side data grid (`ShowGrid`), with sorting, filtering
+and pagination:
+
+![Interactive data grid](https://raw.githubusercontent.com/arturoeanton/go-notebook/main/gonote3.png)
 
 
 ## To Do
