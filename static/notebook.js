@@ -168,6 +168,17 @@
         }
     });
 
+    // Click on an output label collapses/expands that output (Jupyter style).
+    document.addEventListener('click', function (e) {
+        var label = e.target.closest ? e.target.closest('.output-label') : null;
+        if (label) {
+            var out = label.closest('.cell-output');
+            if (out) {
+                out.classList.toggle('output--collapsed');
+            }
+        }
+    });
+
     function boot() {
         var content = document.getElementById('content');
         if (content) {

@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"reflect"
 
 	pd "github.com/arturoeanton/go-pandas"
 	"github.com/arturoeanton/go-pandas/dataframe"
@@ -21,6 +22,38 @@ func declareHostFuncs(interp *fast.Interp, s *Session) {
 	interp.DeclFunc("ShowGrid", func(df *dataframe.DataFrame) string {
 		return s.registerGrid(df)
 	})
+	interp.DeclFunc("ShowPlot", showPlot)
+}
+
+// showPlot renders a gonum plot.Plot (or anything with a compatible Save
+// method) to static/tmp.png and returns the img tag for the cell result.
+// It uses reflection so the server binary does not depend on gonum: the
+// plot value comes from the cell's own runtime-imported package.
+func showPlot(p interface{}) string {
+	if p == nil {
+		panic("ShowPlot: nil plot")
+	}
+	m := reflect.ValueOf(p).MethodByName("Save")
+	if !m.IsValid() {
+		panic(fmt.Sprintf("ShowPlot: %T has no Save method", p))
+	}
+	t := m.Type()
+	if t.NumIn() != 3 || t.In(0).Kind() != reflect.Float64 || t.In(1).Kind() != reflect.Float64 ||
+		t.In(2).Kind() != reflect.String {
+		panic(fmt.Sprintf("ShowPlot: unexpected Save signature %v", t))
+	}
+	const fourInches = 4 * 72 // vg.Length is measured in points
+	w := reflect.New(t.In(0)).Elem()
+	w.SetFloat(fourInches)
+	h := reflect.New(t.In(1)).Elem()
+	h.SetFloat(fourInches)
+	out := m.Call([]reflect.Value{w, h, reflect.ValueOf("static/tmp.png")})
+	if len(out) > 0 {
+		if err, ok := out[0].Interface().(error); ok && err != nil {
+			panic(err)
+		}
+	}
+	return "<div><img src='static/tmp.png?_=" + uuid.NewString() + "' /></div>"
 }
 
 // readSQL runs a query and returns the result as a DataFrame.

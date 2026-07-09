@@ -255,6 +255,34 @@ func TestRunHeadless(t *testing.T) {
 	}
 }
 
+// fakeLen mimics vg.Length (a named float64) and fakePlot mimics *plot.Plot's
+// Save method, so ShowPlot can be tested without a gonum dependency.
+type fakeLen float64
+
+type fakePlot struct{ saved string }
+
+func (p *fakePlot) Save(w, h fakeLen, file string) error {
+	p.saved = fmt.Sprintf("%vx%v:%s", float64(w), float64(h), file)
+	return nil
+}
+
+func TestShowPlotReflection(t *testing.T) {
+	p := &fakePlot{}
+	out := showPlot(p)
+	if p.saved != "288x288:static/tmp.png" {
+		t.Fatalf("unexpected Save call: %q", p.saved)
+	}
+	if !strings.HasPrefix(out, "<div><img src='static/tmp.png") {
+		t.Fatalf("unexpected ShowPlot output: %q", out)
+	}
+	defer func() {
+		if recover() == nil {
+			t.Fatal("ShowPlot with a plain value should panic with a clear message")
+		}
+	}()
+	showPlot(42)
+}
+
 func TestAuthTokens(t *testing.T) {
 	store := &AuthStore{Secret: "s3cr3t", Users: map[string]string{}}
 	tok := store.makeToken("ana", time.Now().Add(time.Hour))

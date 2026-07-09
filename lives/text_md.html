@@ -21,7 +21,11 @@
         {{end}}
     </div>
     <div class="cell-actions">
-        <button type="button" class="ghost-btn" id="{{.UUID}}_remove" title="Delete cell"
+        <button type="button" class="ghost-btn" title="Move cell up" onclick="send_event('{{.Id}}', 'MoveUp')">↑</button>
+        <button type="button" class="ghost-btn" title="Move cell down" onclick="send_event('{{.Id}}', 'MoveDown')">↓</button>
+        <button type="button" class="ghost-btn" title="Insert code cell below" onclick="send_event('{{.Id}}', 'InsertBelow')">＋</button>
+        <button type="button" class="ghost-btn" title="Duplicate cell" onclick="send_event('{{.Id}}', 'Duplicate')">⧉</button>
+        <button type="button" class="ghost-btn ghost-btn--danger" id="{{.UUID}}_remove" title="Delete cell"
                 onclick="send_event('{{.Id}}', 'Remove', '{{.UUID}}')">✕</button>
     </div>
 </div>

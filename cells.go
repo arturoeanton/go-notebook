@@ -63,6 +63,33 @@ func (t *TextMD) Remove(data interface{}) {
 	t.Driver.Remove(t.Id)
 }
 
+func (t *TextMD) MoveUp(data interface{}) {
+	if t.Session.moveItem(t.Id, -1) {
+		t.Driver.EvalScript(moveCellJS(t.Id, -1))
+	}
+}
+
+func (t *TextMD) MoveDown(data interface{}) {
+	if t.Session.moveItem(t.Id, +1) {
+		t.Driver.EvalScript(moveCellJS(t.Id, +1))
+	}
+}
+
+func (t *TextMD) InsertBelow(data interface{}) {
+	t.Session.insertShellAfter(t.Id, &Shell{
+		Debug: true, Session: t.Session, Interpreter: t.Session.interp, CaptionPlay: "Play",
+	})
+}
+
+func (t *TextMD) Duplicate(data interface{}) {
+	if t.Result == "" {
+		t.CodeMD = t.Driver.GetElementById(t.UUID + "_text_md")
+	}
+	t.Session.insertMDAfter(t.Id, &TextMD{
+		Session: t.Session, CaptionPlay: "Print", CodeMD: t.CodeMD, Result: t.Result,
+	})
+}
+
 // Shell is a Go code cell evaluated with gomacro. Its outputs are persisted
 // with the notebook, so results survive reloads.
 type Shell struct {
@@ -79,6 +106,15 @@ type Shell struct {
 	Err         string                            `json:"err,omitempty"`
 	Runs        int                               `json:"runs,omitempty"`
 	ElapsedMS   int64                             `json:"elapsed_ms,omitempty"`
+	ExecSeq     int                               `json:"exec_count,omitempty"`
+}
+
+// ExecBadge is Jupyter's In[n] marker for the cell gutter.
+func (t *Shell) ExecBadge() string {
+	if t.ExecSeq > 0 {
+		return "[" + strconv.Itoa(t.ExecSeq) + "]"
+	}
+	return "[ ]"
 }
 
 // OutputsHTML renders the outputs section. It is used by the template on
@@ -130,6 +166,7 @@ func (t *Shell) Remove(data interface{}) {
 
 func (t *Shell) Click(data interface{}) {
 	t.Driver.EvalScript("var c=document.getElementById('" + t.UUID + "_div_code'); if(c){c.classList.add('cell--running')}")
+	t.Driver.FillValueById(t.UUID+"_seq", "[*]")
 	t.Driver.FillValueById(t.UUID+"_status",
 		`<span class="status-dot"></span> Running… <span class="status-note">first import of a package can take a while</span>`)
 
@@ -138,14 +175,60 @@ func (t *Shell) Click(data interface{}) {
 	t.Result, t.Out, t.Err = evalCell(t.Interpreter, t.Code)
 	t.ElapsedMS = time.Since(started).Milliseconds()
 	t.Runs++
+	t.ExecSeq = t.Session.nextExec()
 
 	// update only the outputs: the editor keeps its DOM, cursor and scroll
 	t.Driver.FillValueById(t.UUID+"_out", t.OutputsHTML())
+	t.Driver.FillValueById(t.UUID+"_seq", t.ExecBadge())
 	t.Driver.FillValueById(t.UUID+"_status", "")
 	t.Driver.EvalScript("var c=document.getElementById('" + t.UUID + "_div_code'); if(c){c.classList.remove('cell--running')}")
 	t.Session.mountPendingGrids()
 	t.Session.refreshVars()
 	t.Session.touch(t.Id, Item{Shell: t})
+}
+
+// ClearOut clears the cell outputs, like Jupyter's "Clear Output".
+func (t *Shell) ClearOut(data interface{}) {
+	t.Result, t.Out, t.Err = "", "", ""
+	t.Runs, t.ElapsedMS = 0, 0
+	if t.Driver != nil {
+		t.Driver.FillValueById(t.UUID+"_out", "")
+	}
+	t.Session.touch(t.Id, Item{Shell: t})
+}
+
+func (t *Shell) MoveUp(data interface{}) {
+	if t.Session.moveItem(t.Id, -1) {
+		t.Driver.EvalScript(moveCellJS(t.Id, -1))
+	}
+}
+
+func (t *Shell) MoveDown(data interface{}) {
+	if t.Session.moveItem(t.Id, +1) {
+		t.Driver.EvalScript(moveCellJS(t.Id, +1))
+	}
+}
+
+func (t *Shell) InsertBelow(data interface{}) {
+	t.Session.insertShellAfter(t.Id, &Shell{
+		Debug: true, Session: t.Session, Interpreter: t.Interpreter, CaptionPlay: "Play",
+	})
+}
+
+func (t *Shell) Duplicate(data interface{}) {
+	t.Code = t.Driver.GetElementById(t.UUID + "_code")
+	t.Session.insertShellAfter(t.Id, &Shell{
+		Debug: true, Session: t.Session, Interpreter: t.Interpreter, CaptionPlay: "Play",
+		Code: t.Code,
+	})
+}
+
+// moveCellJS swaps a cell slot with its previous/next sibling in the DOM.
+func moveCellJS(id string, delta int) string {
+	if delta < 0 {
+		return "var el=document.getElementById('" + id + "'); if(el&&el.previousElementSibling){el.parentNode.insertBefore(el, el.previousElementSibling)}"
+	}
+	return "var el=document.getElementById('" + id + "'); if(el&&el.nextElementSibling){el.nextElementSibling.insertAdjacentElement('afterend', el)}"
 }
 
 // evalCell evaluates Go code in the interpreter, capturing stdout/stderr and

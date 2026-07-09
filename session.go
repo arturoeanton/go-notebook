@@ -41,6 +41,52 @@ type Session struct {
 	page         *liveview.ComponentDriver[*liveview.Layout]
 	pendingGrids []*DataGrid
 	varsBaseline map[string]bool
+	execSeq      int
+}
+
+// nextExec returns the next execution number, Jupyter's In[n] counter.
+func (s *Session) nextExec() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.execSeq++
+	return s.execSeq
+}
+
+// moveItem shifts a cell one position up (-1) or down (+1) in the order.
+func (s *Session) moveItem(id string, delta int) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for i, key := range s.note.Order {
+		if key != id {
+			continue
+		}
+		j := i + delta
+		if j < 0 || j >= len(s.note.Order) {
+			return false
+		}
+		s.note.Order[i], s.note.Order[j] = s.note.Order[j], s.note.Order[i]
+		s.scheduleSaveLocked()
+		return true
+	}
+	return false
+}
+
+// insertOrderAfter places id right after afterId in the order, so the cell
+// keeps its position when touch() later stores the item.
+func (s *Session) insertOrderAfter(afterId, id string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if liveview.ContainsString(s.note.Order, id) {
+		return
+	}
+	for i, key := range s.note.Order {
+		if key == afterId {
+			s.note.Order = append(s.note.Order[:i+1],
+				append([]string{id}, s.note.Order[i+1:]...)...)
+			return
+		}
+	}
+	s.note.Order = append(s.note.Order, id)
 }
 
 func newSession(name string, interp *fast.Interp) *Session {

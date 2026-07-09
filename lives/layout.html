@@ -21,6 +21,10 @@
             <nav class="toolbar">
                 {{ mount "link_add_code"}}
                 {{mount "link_add_md"}}
+                <button type="button" class="btn" title="Run all cells in order"
+                        onclick="send_event('link_reload','RunAll')"><span class="btn-ico">▶▶</span> Run all</button>
+                <button type="button" class="btn" title="Clear all outputs"
+                        onclick="send_event('link_reload','ClearAll')">Clear all</button>
                 {{mount "link_reload"}}
                 <select id="snippet" class="select" onchange="send_event('link_add_code','Click', this.value); this.value=''">
                     <option value="">Insert snippet…</option>

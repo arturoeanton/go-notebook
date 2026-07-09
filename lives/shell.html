@@ -4,6 +4,7 @@
                 onclick="send_event('{{.Id}}', 'Click')">
             <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5v11l9-5.5z"/></svg>
         </button>
+        <div class="exec-seq" id="{{.UUID}}_seq" title="Execution order">{{.ExecBadge}}</div>
     </div>
     <div class="cell-main">
         <div class="cell-editor">
@@ -14,7 +15,12 @@
         <div class="cell-outputs" id="{{.UUID}}_out">{{.OutputsHTML}}</div>
     </div>
     <div class="cell-actions">
-        <button type="button" class="ghost-btn" id="{{.UUID}}_remove" title="Delete cell"
+        <button type="button" class="ghost-btn" title="Move cell up" onclick="send_event('{{.Id}}', 'MoveUp')">↑</button>
+        <button type="button" class="ghost-btn" title="Move cell down" onclick="send_event('{{.Id}}', 'MoveDown')">↓</button>
+        <button type="button" class="ghost-btn" title="Insert code cell below" onclick="send_event('{{.Id}}', 'InsertBelow')">＋</button>
+        <button type="button" class="ghost-btn" title="Duplicate cell" onclick="send_event('{{.Id}}', 'Duplicate')">⧉</button>
+        <button type="button" class="ghost-btn" title="Clear output" onclick="send_event('{{.Id}}', 'ClearOut')">⌫</button>
+        <button type="button" class="ghost-btn ghost-btn--danger" id="{{.UUID}}_remove" title="Delete cell"
                 onclick="send_event('{{.Id}}', 'Remove', '{{.UUID}}')">✕</button>
     </div>
 </div>

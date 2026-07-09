@@ -235,6 +235,22 @@ func main() {
 		linkReload.Events["Click"] = func(c *LinkMenu, data interface{}) {
 			openNotebook(session.notebookName())
 		}
+		linkReload.Events["RunAll"] = func(c *LinkMenu, data interface{}) {
+			for _, key := range session.snapshotOrder() {
+				item := session.item(key)
+				if item.Shell != nil && item.Shell.Driver != nil {
+					item.Shell.Click(nil)
+				}
+			}
+		}
+		linkReload.Events["ClearAll"] = func(c *LinkMenu, data interface{}) {
+			for _, key := range session.snapshotOrder() {
+				item := session.item(key)
+				if item.Shell != nil && item.Shell.Driver != nil {
+					item.Shell.ClearOut(nil)
+				}
+			}
+		}
 		linkReload.Events["Open"] = func(c *LinkMenu, data interface{}) {
 			if name, ok := data.(string); ok {
 				openNotebook(name)
@@ -353,4 +369,28 @@ func scrollToCell(page *liveview.ComponentDriver[*liveview.Layout], id string) {
 
 func newGridDriver(g *DataGrid) liveview.LiveDriver {
 	return liveview.NewDriver(g.Id, g)
+}
+
+// insertShellAfter mounts a new code cell right below an existing cell,
+// keeping the DOM and the notebook order in sync.
+func (s *Session) insertShellAfter(afterId string, newShell *Shell) {
+	id := "shell_" + uuid.NewString()
+	s.insertOrderAfter(afterId, id)
+	s.page.AddNode("main_div", `<div id="`+id+`" class="cell-slot"></div>`)
+	s.page.EvalScript(placeAfterJS(afterId, id))
+	s.page.MountWithStart(id, liveview.NewDriver(id, newShell))
+}
+
+// insertMDAfter mounts a new markdown cell right below an existing cell.
+func (s *Session) insertMDAfter(afterId string, newMD *TextMD) {
+	id := "text_" + uuid.NewString()
+	s.insertOrderAfter(afterId, id)
+	s.page.AddNode("main_div", `<div id="`+id+`" class="cell-slot"></div>`)
+	s.page.EvalScript(placeAfterJS(afterId, id))
+	s.page.MountWithStart(id, liveview.NewDriver(id, newMD))
+}
+
+// placeAfterJS moves the freshly appended slot right after the reference cell.
+func placeAfterJS(afterId, id string) string {
+	return "var a=document.getElementById('" + afterId + "'),b=document.getElementById('" + id + "'); if(a&&b){a.insertAdjacentElement('afterend', b)}"
 }

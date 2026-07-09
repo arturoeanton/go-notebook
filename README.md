@@ -16,6 +16,8 @@ You can add code and text depends your needs.
 ## Features
 
 * Modern UI with light/dark theme, CodeMirror editor with Go syntax highlighting, and keyboard shortcuts (run cells with `Shift+Enter`).
+* Jupyter-style workflow: execution counter (`[n]`, `[*]` while running), Run all, Clear output per cell or for the whole notebook, move/insert/duplicate cells from the hover toolbar, and collapsible outputs.
+* `ShowPlot(p)` works out of the box for gonum plots (host-side via reflection, no gonum dependency in the binary).
 * Notebook manager sidebar: create, rename, duplicate and delete notebooks.
 * Per-tab sessions: each browser tab gets its own notebook and interpreter.
 * Cell outputs are persisted with the notebook and survive reloads; saving is automatic (debounced).
