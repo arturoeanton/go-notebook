@@ -4,7 +4,7 @@ go 1.25.5
 
 require (
 	github.com/arturoeanton/go-dsl v1.4.0
-	github.com/arturoeanton/go-echo-live-view v0.0.0-20250823060707-aaf6c134fc88
+	github.com/arturoeanton/go-echo-live-view v0.2.0
 	github.com/arturoeanton/go-pandas v1.0.0
 	github.com/arturoeanton/go-xml v1.2.0
 	github.com/cosmos72/gomacro v0.0.0-20251011163654-53dd3d49f67b

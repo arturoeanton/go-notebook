@@ -1,7 +1,7 @@
 github.com/arturoeanton/go-dsl v1.4.0 h1:dyHo2ve5EnaJnikV38z81i/twGaMa8/XSmDKIfCVtaI=
 github.com/arturoeanton/go-dsl v1.4.0/go.mod h1:T9zMJWuPMOqdyDMbxalXXYFfYJ5GCUULIdGyxBtiOZg=
-github.com/arturoeanton/go-echo-live-view v0.0.0-20250823060707-aaf6c134fc88 h1:H8+hdusRfLqENR4jQysnDVK5hwudLDiYU+Hm9pEapRs=
-github.com/arturoeanton/go-echo-live-view v0.0.0-20250823060707-aaf6c134fc88/go.mod h1:p1LM04SqEc6QwLsRmrlKgFI2NJcfNl6h6XKSziul8EE=
+github.com/arturoeanton/go-echo-live-view v0.2.0 h1:8Lwbl38vsrUSh14h2Vh05sO6ZBnuYIjpgBTrI1sZFlc=
+github.com/arturoeanton/go-echo-live-view v0.2.0/go.mod h1:p1LM04SqEc6QwLsRmrlKgFI2NJcfNl6h6XKSziul8EE=
 github.com/arturoeanton/go-pandas v1.0.0 h1:TIRMTPed64cnUsGWybyRjgIoKmQ22bTbGFBMkLNibVI=
 github.com/arturoeanton/go-pandas v1.0.0/go.mod h1:iDCaa9Eo90fU5yk4a/4LrJpDrE5eZU0KARDzCWD3dJU=
 github.com/arturoeanton/go-xml v1.2.0 h1:STKJl6MxBt0aLgHdAOcwKlaibSPdv78xn6YjoI26T/g=
