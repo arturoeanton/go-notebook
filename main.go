@@ -195,8 +195,15 @@ func main() {
 			if name == "" {
 				name = defaultNotebook
 			}
+			if !session.load(name) {
+				// missing or unreadable: fall back instead of creating files
+				name = defaultNotebook
+				if !session.load(name) {
+					session.create(name)
+					session.load(name)
+				}
+			}
 			linkReload.FillValueById("main_div", "")
-			session.load(name)
 			for _, key := range session.snapshotOrder() {
 				item := session.item(key)
 				if item.MD != nil {
@@ -261,14 +268,15 @@ func main() {
 			if name == "" {
 				return
 			}
-			openNotebook(name) // load() creates the file when missing
+			session.create(name)
+			openNotebook(name)
 		}
 		linkReload.Events["Delete"] = func(c *LinkMenu, data interface{}) {
 			name := sanitizeNotebookName(toString(data))
 			if name == "" {
 				return
 			}
-			os.Remove(session.path(name))
+			session.trash(name)
 			if name == session.notebookName() {
 				openNotebook(defaultNotebook)
 				return

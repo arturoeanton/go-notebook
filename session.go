@@ -147,23 +147,47 @@ func listNotebooks(dir string) []string {
 	return out
 }
 
-// load switches the session to the given notebook, creating it when missing.
-func (s *Session) load(name string) {
+// load switches the session to the given notebook. It only opens notebooks
+// that exist on disk — creating files is the job of create() — so opening a
+// stale name (deleted notebook, old localStorage) can never produce an empty
+// file. Returns false when the notebook does not exist or cannot be parsed.
+func (s *Session) load(name string) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	data, err := os.ReadFile(s.path(name))
+	if err != nil {
+		return false
+	}
+	note := emptyNote()
+	if err := json.Unmarshal(data, &note); err != nil {
+		log.Println("parsing notebook:", err)
+		return false
+	}
 	s.name = name
-	s.note = emptyNote()
+	s.note = note
+	return true
+}
+
+// create writes an empty notebook file if it does not exist yet.
+func (s *Session) create(name string) {
 	p := s.path(name)
 	if !liveview.Exists(p) {
 		liveview.StringToFile(p, `{"order":[], "Items":{}}`)
 	}
-	data, err := os.ReadFile(p)
-	if err != nil {
-		log.Println("reading notebook:", err)
+}
+
+// trash moves a notebook into the workspace's .trash directory instead of
+// deleting it, so an accidental delete is always recoverable.
+func (s *Session) trash(name string) {
+	p := s.path(name)
+	if !liveview.Exists(p) {
 		return
 	}
-	if err := json.Unmarshal(data, &s.note); err != nil {
-		log.Println("parsing notebook:", err)
+	trashDir := filepath.Join(s.dir, ".trash")
+	os.MkdirAll(trashDir, 0755)
+	dst := filepath.Join(trashDir, name+"-"+time.Now().Format("20060102-150405")+".gonote.json")
+	if err := os.Rename(p, dst); err != nil {
+		log.Println("trashing notebook:", err)
 	}
 }
 
@@ -220,7 +244,9 @@ func (s *Session) scheduleSaveLocked() {
 	s.timer = time.AfterFunc(400*time.Millisecond, s.Flush)
 }
 
-// Flush writes the notebook to disk immediately.
+// Flush writes the notebook to disk immediately. As a safety net against
+// wipe bugs, overwriting a non-empty notebook with an empty one first stashes
+// the previous content in .trash.
 func (s *Session) Flush() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -233,5 +259,17 @@ func (s *Session) Flush() {
 		log.Println("saving notebook:", err)
 		return
 	}
-	liveview.StringToFile(s.path(s.name), string(b))
+	p := s.path(s.name)
+	if len(s.note.Order) == 0 {
+		if old, err := os.ReadFile(p); err == nil {
+			var prev Note
+			if json.Unmarshal(old, &prev) == nil && len(prev.Order) > 0 {
+				trashDir := filepath.Join(s.dir, ".trash")
+				os.MkdirAll(trashDir, 0755)
+				os.WriteFile(filepath.Join(trashDir,
+					s.name+"-wiped-"+time.Now().Format("20060102-150405")+".gonote.json"), old, 0644)
+			}
+		}
+	}
+	liveview.StringToFile(p, string(b))
 }

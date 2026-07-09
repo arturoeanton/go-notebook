@@ -19,3 +19,4 @@ demo.db
 # Authentication and per-user workspaces (never commit credentials or user data)
 users.json
 workspaces/
+notebooks/.trash/

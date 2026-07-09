@@ -343,6 +343,44 @@ func TestAuthMiddleware(t *testing.T) {
 	}
 }
 
+func TestDataSafetyNets(t *testing.T) {
+	s := newSession("x", nil)
+	s.dir = t.TempDir()
+
+	// opening a missing notebook must not create a file
+	if s.load("fantasma") {
+		t.Fatal("load of a missing notebook must fail")
+	}
+	if _, err := os.Stat(s.path("fantasma")); err == nil {
+		t.Fatal("load must never create files")
+	}
+
+	// delete moves to .trash, recoverable
+	os.WriteFile(s.path("importante"), []byte(`{"order":["a"],"Items":{"a":{}}}`), 0644)
+	s.trash("importante")
+	if _, err := os.Stat(s.path("importante")); err == nil {
+		t.Fatal("trash should remove the original file")
+	}
+	trashed, _ := filepath.Glob(filepath.Join(s.dir, ".trash", "importante-*.gonote.json"))
+	if len(trashed) != 1 {
+		t.Fatalf("expected the notebook in .trash, got %v", trashed)
+	}
+
+	// overwriting a non-empty notebook with an empty note stashes a backup
+	os.WriteFile(s.path("x"), []byte(`{"order":["a"],"Items":{"a":{}}}`), 0644)
+	s.note = emptyNote()
+	s.name = "x"
+	s.Flush()
+	wiped, _ := filepath.Glob(filepath.Join(s.dir, ".trash", "x-wiped-*.gonote.json"))
+	if len(wiped) != 1 {
+		t.Fatalf("expected a wipe backup in .trash, got %v", wiped)
+	}
+	data, _ := os.ReadFile(wiped[0])
+	if !strings.Contains(string(data), `"a"`) {
+		t.Fatal("wipe backup should hold the previous content")
+	}
+}
+
 func TestEnsureWorkspace(t *testing.T) {
 	oldWD, _ := os.Getwd()
 	// run inside a temp copy so workspaces/ does not pollute the repo
