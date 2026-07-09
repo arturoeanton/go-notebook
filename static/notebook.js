@@ -11,7 +11,7 @@
     'use strict';
 
     var THEME_KEY = 'gonotebook-theme';
-    var CM_THEMES = { light: 'default', dark: 'material-darker' };
+    var CM_THEMES = { light: 'idea', dark: 'material-darker' };
 
     // ------------------------------------------------------------------ theme
     function currentTheme() {

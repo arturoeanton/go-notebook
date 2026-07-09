@@ -48,6 +48,31 @@ func (t *LinkMenu) GetTemplate() string {
 	return `<button type="button" class="btn {{.Class}}" title="{{.Title}}" onclick="send_event('{{.Id}}','Click')">{{.Caption}}</button>`
 }
 
+// interpPool keeps one interpreter warmed up in the background so a new
+// connection does not pay the ~250ms interpreter+preamble setup.
+var interpPool = make(chan *fast.Interp, 1)
+
+func warmInterpreter() {
+	go func() {
+		defer func() { recover() }()
+		select {
+		case interpPool <- newInterpreter():
+		default:
+		}
+	}()
+}
+
+func takeInterpreter() *fast.Interp {
+	select {
+	case interp := <-interpPool:
+		warmInterpreter()
+		return interp
+	default:
+		warmInterpreter()
+		return newInterpreter()
+	}
+}
+
 func newInterpreter() *fast.Interp {
 	interp := fast.New()
 	interp.SetDebugger(&debug.Debugger{})
@@ -100,11 +125,11 @@ func main() {
 		return exportHandler(c, store)
 	})
 
-	// Warm up the interpreter machinery once at startup.
-	newInterpreter()
+	// Keep an interpreter warmed up for the next connection.
+	warmInterpreter()
 
 	registerLivePage(e, "/", store, func(user string) liveview.LiveDriver {
-		interp := newInterpreter()
+		interp := takeInterpreter()
 		session := newSession(defaultNotebook, interp)
 		session.dir = ensureWorkspace(user)
 		declareHostFuncs(interp, session)
@@ -128,7 +153,7 @@ func main() {
 			}
 
 			newShell := &Shell{Debug: true, Session: session, Interpreter: interp, CaptionPlay: "Play", Code: code}
-			addShell(idShell, page, newShell)
+			addShell(idShell, page, newShell, true)
 		}
 
 		linkAddMD := liveview.NewDriver("link_add_md", &LinkMenu{
@@ -137,7 +162,7 @@ func main() {
 		})
 		linkAddMD.Events["Click"] = func(c *LinkMenu, data interface{}) {
 			idText := "text_" + uuid.NewString()
-			addMD(idText, page, &TextMD{Session: session, CaptionPlay: "Print"})
+			addMD(idText, page, &TextMD{Session: session, CaptionPlay: "Print"}, true)
 		}
 
 		linkReload := liveview.NewDriver("link_reload", &LinkMenu{
@@ -171,20 +196,18 @@ func main() {
 				name = defaultNotebook
 			}
 			linkReload.FillValueById("main_div", "")
-			defaultCode, _ := liveview.FileToString("default.gonote")
-			interp.Eval(defaultCode)
 			session.load(name)
 			for _, key := range session.snapshotOrder() {
 				item := session.item(key)
 				if item.MD != nil {
 					item.MD.Session = session
-					addMD(key, page, item.MD)
+					addMD(key, page, item.MD, false)
 				}
 				if item.Shell != nil {
 					item.Shell.Session = session
 					item.Shell.Interpreter = interp
 					item.Shell.CaptionPlay = "Play"
-					addShell(key, page, item.Shell)
+					addShell(key, page, item.Shell, false)
 				}
 			}
 
@@ -306,18 +329,22 @@ func jsString(s string) string {
 	return string(b)
 }
 
-func addShell(idShell string, page *liveview.ComponentDriver[*liveview.Layout], newShell *Shell) {
+func addShell(idShell string, page *liveview.ComponentDriver[*liveview.Layout], newShell *Shell, scroll bool) {
 	page.AddNode("main_div", `<div id="`+idShell+`" class="cell-slot"></div>`)
 	shell := liveview.NewDriver(idShell, newShell)
 	page.MountWithStart(idShell, shell)
-	scrollToCell(page, idShell)
+	if scroll {
+		scrollToCell(page, idShell)
+	}
 }
 
-func addMD(idText string, page *liveview.ComponentDriver[*liveview.Layout], newTextMD *TextMD) {
+func addMD(idText string, page *liveview.ComponentDriver[*liveview.Layout], newTextMD *TextMD, scroll bool) {
 	page.AddNode("main_div", `<div id="`+idText+`" class="cell-slot"></div>`)
 	textMD := liveview.NewDriver(idText, newTextMD)
 	page.MountWithStart(idText, textMD)
-	scrollToCell(page, idText)
+	if scroll {
+		scrollToCell(page, idText)
+	}
 }
 
 func scrollToCell(page *liveview.ComponentDriver[*liveview.Layout], id string) {

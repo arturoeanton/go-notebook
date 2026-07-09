@@ -7,7 +7,9 @@ import (
 	"io"
 	"log"
 	"os"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/arturoeanton/go-echo-live-view/liveview"
 	"github.com/cosmos72/gomacro/fast"
@@ -75,6 +77,35 @@ type Shell struct {
 	Result      string                            `json:"result,omitempty"`
 	Out         string                            `json:"out,omitempty"`
 	Err         string                            `json:"err,omitempty"`
+	Runs        int                               `json:"runs,omitempty"`
+	ElapsedMS   int64                             `json:"elapsed_ms,omitempty"`
+}
+
+// OutputsHTML renders the outputs section. It is used by the template on
+// mount and pushed directly into the DOM after a run, so the editor is never
+// re-rendered (no flicker, cursor and scroll preserved).
+func (t *Shell) OutputsHTML() string {
+	var sb strings.Builder
+	if t.Runs > 0 {
+		sb.WriteString(`<div class="run-meta">run #` + strconv.Itoa(t.Runs) + ` · ` + formatElapsed(t.ElapsedMS) + `</div>`)
+	}
+	if t.Err != "" {
+		sb.WriteString(`<div class="cell-output cell-error"><span class="output-label">Error</span><pre class="output-body">` + t.Err + `</pre></div>`)
+	}
+	if t.Result != "" {
+		sb.WriteString(`<div class="cell-output cell-result"><span class="output-label">Result</span><div class="output-body">` + t.Result + `</div></div>`)
+	}
+	if t.Out != "" {
+		sb.WriteString(`<div class="cell-output cell-stdout"><span class="output-label">Output</span><pre class="output-body">` + t.Out + `</pre></div>`)
+	}
+	return sb.String()
+}
+
+func formatElapsed(ms int64) string {
+	if ms < 1000 {
+		return strconv.FormatInt(ms, 10) + "ms"
+	}
+	return fmt.Sprintf("%.1fs", float64(ms)/1000)
 }
 
 func (t *Shell) GetDriver() liveview.LiveDriver {
@@ -100,12 +131,18 @@ func (t *Shell) Remove(data interface{}) {
 func (t *Shell) Click(data interface{}) {
 	t.Driver.EvalScript("var c=document.getElementById('" + t.UUID + "_div_code'); if(c){c.classList.add('cell--running')}")
 	t.Driver.FillValueById(t.UUID+"_status",
-		`<span class="status-dot"></span> Running… importing a package for the first time can take a minute while it compiles.`)
+		`<span class="status-dot"></span> Running… <span class="status-note">first import of a package can take a while</span>`)
 
 	t.Code = t.Driver.GetElementById(t.UUID + "_code")
+	started := time.Now()
 	t.Result, t.Out, t.Err = evalCell(t.Interpreter, t.Code)
+	t.ElapsedMS = time.Since(started).Milliseconds()
+	t.Runs++
 
-	t.Driver.Commit()
+	// update only the outputs: the editor keeps its DOM, cursor and scroll
+	t.Driver.FillValueById(t.UUID+"_out", t.OutputsHTML())
+	t.Driver.FillValueById(t.UUID+"_status", "")
+	t.Driver.EvalScript("var c=document.getElementById('" + t.UUID + "_div_code'); if(c){c.classList.remove('cell--running')}")
 	t.Session.mountPendingGrids()
 	t.Session.refreshVars()
 	t.Session.touch(t.Id, Item{Shell: t})

@@ -536,7 +536,16 @@ body {
 /* ---------------------------------------------------------------------------
    Editor
 --------------------------------------------------------------------------- */
-.cell-editor { width: 100%; }
+.cell-editor {
+    background: var(--bg-inset);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-right: 10px;
+    overflow: hidden;
+    transition: border-color 0.15s ease;
+}
+
+.cell:focus-within .cell-editor { border-color: var(--accent); }
 
 textarea.code-editor {
     width: 100%;
@@ -560,7 +569,7 @@ textarea.code-editor:focus { outline: none; }
     font-family: var(--mono);
     font-size: 13.5px;
     line-height: 1.55;
-    padding: 2px 0;
+    padding: 4px 2px;
 }
 
 .CodeMirror-gutters {
@@ -579,6 +588,28 @@ textarea.code-editor:focus { outline: none; }
 /* ---------------------------------------------------------------------------
    Outputs
 --------------------------------------------------------------------------- */
+.cell-outputs { display: flex; flex-direction: column; gap: 8px; }
+
+.cell-outputs:not(:empty) { animation: out-in 0.18s ease; }
+
+@keyframes out-in {
+    from { opacity: 0; transform: translateY(-3px); }
+    to   { opacity: 1; transform: none; }
+}
+
+.run-meta {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--text-dim);
+    margin-right: 10px;
+    text-align: right;
+}
+
+.status-note {
+    color: var(--text-dim);
+    font-weight: 400;
+}
+
 .cell-output {
     margin-right: 10px;
     border-top: 1px solid var(--border);

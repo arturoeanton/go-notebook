@@ -11,24 +11,7 @@
                       id="{{.UUID}}_code" spellcheck="false">{{.Code}}</textarea>
         </div>
         <div class="cell-status" id="{{.UUID}}_status"></div>
-        {{if ne .Err "" }}
-        <div class="cell-output cell-error">
-            <span class="output-label">Error</span>
-            <pre class="output-body">{{.Err}}</pre>
-        </div>
-        {{end}}
-        {{if ne .Result "" }}
-        <div class="cell-output cell-result">
-            <span class="output-label">Result</span>
-            <div class="output-body">{{.Result}}</div>
-        </div>
-        {{end}}
-        {{if ne .Out "" }}
-        <div class="cell-output cell-stdout">
-            <span class="output-label">Output</span>
-            <pre class="output-body">{{.Out}}</pre>
-        </div>
-        {{end}}
+        <div class="cell-outputs" id="{{.UUID}}_out">{{.OutputsHTML}}</div>
     </div>
     <div class="cell-actions">
         <button type="button" class="ghost-btn" id="{{.UUID}}_remove" title="Delete cell"
